@@ -168,6 +168,7 @@ def test_profile_sections_can_be_empty() -> None:
     assert profile.model_dump(mode="json") == {
         "full_name": None,
         "headline": None,
+        "contact": None,
         "summary_facts": [],
         "work_experiences": [],
         "education": [],

@@ -60,6 +60,25 @@ class LanguageSkill(BaseModel):
     source: FactSource
 
 
+class ContactValue(BaseModel):
+    """One directly extracted contact value with its source evidence."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    value: NonEmptyText
+    source: FactSource
+
+
+class ContactInfo(BaseModel):
+    """Contact details that are explicitly present in the source CV."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    email: ContactValue | None = None
+    phone: ContactValue | None = None
+    website: ContactValue | None = None
+
+
 class Certification(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -92,6 +111,7 @@ class CareerProfile(BaseModel):
 
     full_name: NonEmptyText | None = None
     headline: NonEmptyText | None = None
+    contact: ContactInfo | None = None
     summary_facts: tuple[CareerFact, ...] = Field(default_factory=tuple)
     work_experiences: tuple[WorkExperience, ...] = Field(default_factory=tuple)
     education: tuple[Education, ...] = Field(default_factory=tuple)
