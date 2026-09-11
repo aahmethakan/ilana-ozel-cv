@@ -1,4 +1,4 @@
-from app.ai.career.schemas import AIInterpretationResponse
+from app.ai.career.schemas import AIInterpretationRequest, AIInterpretationResponse
 from app.ai.career.validation import (
     CareerCandidateValidationResult,
     RejectedAIProposal,
@@ -8,14 +8,30 @@ from app.domain.document import CVDocument
 
 
 def create_career_fact_candidates(
-    document: CVDocument, response: AIInterpretationResponse
+    document: CVDocument,
+    response: AIInterpretationResponse,
+    request: AIInterpretationRequest,
 ) -> CareerCandidateValidationResult:
-    """Validate AI proposal evidence against one CVDocument before retaining candidates."""
+    """Validate proposals against the CVDocument and evidence explicitly supplied to AI."""
 
     blocks = {block.stable_reference: block for block in document.blocks}
+    allowed_references = {evidence.reference for evidence in request.evidence}
     candidates = []
     rejected = []
     for proposal in response.candidates:
+        request_unknown_references = [
+            reference
+            for reference in proposal.evidence_references
+            if reference not in allowed_references
+        ]
+        if request_unknown_references:
+            rejected.append(
+                RejectedAIProposal(
+                    proposed_statement=proposal.proposed_statement,
+                    reason="unknown_request_evidence_reference",
+                )
+            )
+            continue
         unknown_references = [reference for reference in proposal.evidence_references if reference not in blocks]
         if unknown_references:
             rejected.append(

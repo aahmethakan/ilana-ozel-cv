@@ -50,12 +50,13 @@ def assist_career_extraction(document: CVDocument, provider: AIProvider) -> Care
         if item.block_reference in requested or not _eligible(item, blocks[item.block_reference].raw_text):
             continue
         requested.add(item.block_reference)
+        request = _request(document, item)
         try:
-            response = provider.interpret_career_evidence(_request(document, item))
+            response = provider.interpret_career_evidence(request)
         except Exception:
             issues.append(ProcessingIssue(evidence_reference=item.block_reference, issue_code="provider_error", safe_message="AI interpretation could not be completed."))
             continue
-        validated = create_career_fact_candidates(document, response)
+        validated = create_career_fact_candidates(document, response, request)
         rejected.extend(validated.rejected_proposals)
         if not validated.candidates:
             issues.append(ProcessingIssue(evidence_reference=item.block_reference, issue_code="no_candidate_returned", safe_message="No safe AI proposal was returned."))

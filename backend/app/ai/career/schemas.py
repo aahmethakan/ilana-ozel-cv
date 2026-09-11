@@ -63,7 +63,6 @@ class AIProposedCandidate(BaseModel):
     evidence_references: tuple[NonEmptyText, ...] = Field(min_length=1)
     confidence: AIConfidence
     rationale: NonEmptyText | None = None
-    requires_user_confirmation: bool = True
     proposed_fields: tuple[CandidateField, ...] = Field(default_factory=tuple)
 
 

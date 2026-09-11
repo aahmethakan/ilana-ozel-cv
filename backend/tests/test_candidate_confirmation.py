@@ -2,11 +2,12 @@ from app.ai.career import AIConfidence, AIInterpretationResponse, AIProposedCand
 from app.confirmation.career import ConfirmationAction, resolve_candidate
 from app.confirmation.career.service import candidate_id
 from app.domain.career import SourceType, VerificationStatus
-from tests.test_ai_career_foundation import source_document
+from tests.test_ai_career_foundation import request_for_document, source_document
 
 
 def candidate(source: str, proposed: str, candidate_type: CandidateType = CandidateType.SKILL):
-    return create_career_fact_candidates(source_document(source), AIInterpretationResponse(candidates=(AIProposedCandidate(candidate_type=candidate_type, proposed_statement=proposed, evidence_references=("page:1:block:1",), confidence=AIConfidence.HIGH),))).candidates[0]
+    document = source_document(source)
+    return create_career_fact_candidates(document, AIInterpretationResponse(candidates=(AIProposedCandidate(candidate_type=candidate_type, proposed_statement=proposed, evidence_references=("page:1:block:1",), confidence=AIConfidence.HIGH),)), request_for_document(document)).candidates[0]
 
 
 def test_accept_promotes_simple_candidate_as_user_provided_with_audit_provenance() -> None:
@@ -46,7 +47,8 @@ def test_accept_is_blocked_for_all_inflation_categories_but_correction_is_allowe
 
 def test_low_confidence_nonblocking_candidate_can_be_user_confirmed_and_models_serialize() -> None:
     proposed = AIProposedCandidate(candidate_type=CandidateType.SKILL, proposed_statement="Python", evidence_references=("page:1:block:1",), confidence=AIConfidence.LOW)
-    original = create_career_fact_candidates(source_document("Python"), AIInterpretationResponse(candidates=(proposed,))).candidates[0]
+    document = source_document("Python")
+    original = create_career_fact_candidates(document, AIInterpretationResponse(candidates=(proposed,)), request_for_document(document)).candidates[0]
     result = resolve_candidate(original, ConfirmationAction.ACCEPT)
     assert result.model_dump(mode="json")["promoted_fact"]["source"]["source_type"] == "user_input"
 

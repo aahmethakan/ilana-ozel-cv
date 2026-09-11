@@ -63,5 +63,5 @@ def test_provider_failure_isolated_and_keeps_deterministic_profile_and_evidence(
 def test_invalid_ai_reference_is_rejected_and_result_serializes() -> None:
     response = AIInterpretationResponse(candidates=(AIProposedCandidate(candidate_type=CandidateType.SKILL, proposed_statement="Python", evidence_references=("page:1:block:99",), confidence=AIConfidence.HIGH),))
     result = assist_career_extraction(source_document(), MockAIProvider(response))
-    assert result.rejected_ai_proposals[0].reason == "unknown_evidence_reference"
+    assert result.rejected_ai_proposals[0].reason == "unknown_request_evidence_reference"
     assert result.model_dump(mode="json")["deterministic_profile"]["skills"][0]["statement"] == "Python"

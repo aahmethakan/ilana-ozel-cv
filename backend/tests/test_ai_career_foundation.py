@@ -29,6 +29,15 @@ def source_document(*texts: str) -> CVDocument:
     )
 
 
+def request_for_document(document: CVDocument) -> AIInterpretationRequest:
+    return AIInterpretationRequest(
+        evidence=tuple(
+            EvidenceContext(reference=block.stable_reference, original_text=block.raw_text)
+            for block in document.blocks
+        )
+    )
+
+
 def proposal(statement: str, references: tuple[str, ...], candidate_type: CandidateType = CandidateType.SKILL, **kwargs: object) -> AIProposedCandidate:
     return AIProposedCandidate(
         candidate_type=candidate_type,
@@ -56,6 +65,8 @@ def test_proposal_requires_nonblank_statement_and_evidence_reference() -> None:
         proposal(" ", ("page:1:block:1",))
     with pytest.raises(ValidationError):
         proposal("Excel", ())
+    with pytest.raises(ValidationError):
+        proposal("Excel", ("page:1:block:1",), requires_user_confirmation=False)
 
 
 def test_candidate_model_rejects_blank_statement_and_reference() -> None:
@@ -95,9 +106,13 @@ def test_candidate_model_cannot_be_marked_verified_or_confirmation_free() -> Non
 
 
 def test_dangling_evidence_reference_is_rejected() -> None:
+    document = source_document("Excel")
     result = create_career_fact_candidates(
-        source_document("Excel"),
+        document,
         AIInterpretationResponse(candidates=(proposal("Excel", ("page:1:block:99",)),)),
+        AIInterpretationRequest(
+            evidence=(EvidenceContext(reference="page:1:block:99", original_text="Excel"),)
+        ),
     )
 
     assert result.candidates == ()
@@ -105,9 +120,11 @@ def test_dangling_evidence_reference_is_rejected() -> None:
 
 
 def test_ai_candidate_is_always_unverified_and_not_usable_even_at_high_confidence() -> None:
+    document = source_document("Excel")
     result = create_career_fact_candidates(
-        source_document("Excel"),
-        AIInterpretationResponse(candidates=(proposal("Excel", ("page:1:block:1",), requires_user_confirmation=False),)),
+        document,
+        AIInterpretationResponse(candidates=(proposal("Excel", ("page:1:block:1",)),)),
+        request_for_document(document),
     )
 
     candidate = result.candidates[0]
@@ -129,9 +146,11 @@ def test_ai_candidate_is_always_unverified_and_not_usable_even_at_high_confidenc
     ],
 )
 def test_obvious_unsupported_strengthening_is_flagged(source: str, proposed: str, issue: str) -> None:
+    document = source_document(source)
     result = create_career_fact_candidates(
-        source_document(source),
+        document,
         AIInterpretationResponse(candidates=(proposal(proposed, ("page:1:block:1",)),)),
+        request_for_document(document),
     )
 
     candidate = result.candidates[0]
@@ -156,7 +175,7 @@ def test_candidate_preserves_multiple_work_experience_evidence_references() -> N
         )
     )
 
-    candidate = create_career_fact_candidates(document, response).candidates[0]
+    candidate = create_career_fact_candidates(document, response, request_for_document(document)).candidates[0]
 
     assert candidate.evidence_references == ("page:1:block:1", "page:1:block:2", "page:1:block:3")
     assert candidate.verification_status is VerificationStatus.INFERRED_UNVERIFIED
@@ -164,13 +183,34 @@ def test_candidate_preserves_multiple_work_experience_evidence_references() -> N
 
 
 def test_education_candidate_remains_unverified() -> None:
+    document = source_document("Example University", "Engineering")
     candidate = create_career_fact_candidates(
-        source_document("Example University", "Engineering"),
+        document,
         AIInterpretationResponse(candidates=(proposal("Engineering at Example University", ("page:1:block:1", "page:1:block:2"), CandidateType.EDUCATION),)),
+        request_for_document(document),
     ).candidates[0]
 
     assert candidate.verification_status is VerificationStatus.INFERRED_UNVERIFIED
     assert candidate.is_claim_usable is False
+
+
+def test_request_evidence_boundary_rejects_a_document_reference_not_sent_to_ai() -> None:
+    document = source_document("Production Engineer", "Example Manufacturing", "2022 - 2024", "Unrelated block")
+    request = AIInterpretationRequest(
+        evidence=tuple(
+            EvidenceContext(reference=block.stable_reference, original_text=block.raw_text)
+            for block in document.blocks[:3]
+        ),
+        target_category=CandidateType.WORK_EXPERIENCE,
+    )
+    response = AIInterpretationResponse(
+        candidates=(proposal("Production Engineer", ("page:1:block:4",), CandidateType.WORK_EXPERIENCE),)
+    )
+
+    result = create_career_fact_candidates(document, response, request)
+
+    assert result.candidates == ()
+    assert result.rejected_proposals[0].reason == "unknown_request_evidence_reference"
 
 
 def test_mock_provider_is_deterministic() -> None:

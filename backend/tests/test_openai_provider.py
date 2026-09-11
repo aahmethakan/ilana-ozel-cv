@@ -10,7 +10,7 @@ from app.ai.providers.openai_provider import (
     OpenAIRequestError,
     OpenAIResponseError,
 )
-from tests.test_ai_career_foundation import source_document
+from tests.test_ai_career_foundation import request_for_document, source_document
 
 
 class FakeResponses:
@@ -83,5 +83,6 @@ def test_invalid_or_failed_provider_response_raises_safe_typed_error() -> None:
 
 def test_existing_candidate_validation_remains_authoritative() -> None:
     response = provider(FakeResponses(FakeResponse({"candidates": [{"candidate_type": "skill", "proposed_statement": "Advanced Excel", "evidence_references": ["page:1:block:1"], "confidence": "high"}]}))).interpret_career_evidence(request())
-    candidate = create_career_fact_candidates(source_document("Excel"), response).candidates[0]
+    document = source_document("Excel")
+    candidate = create_career_fact_candidates(document, response, request_for_document(document)).candidates[0]
     assert "unsupported_strengthening" in candidate.issue_codes
