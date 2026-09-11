@@ -4,3 +4,4 @@ pytest
 httpx
 pydantic-settings
 pymupdf
+openai
