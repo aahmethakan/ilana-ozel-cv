@@ -49,14 +49,15 @@ def _audit(candidate: CareerFactCandidate, action: ConfirmationAction, correctio
 
 def _user_fact(candidate: CareerFactCandidate, statement: str, action: ConfirmationAction) -> CareerFact:
     identifier = candidate_id(candidate)
+    source = candidate.source if action is ConfirmationAction.ACCEPT and candidate.source else FactSource(
+        source_type=SourceType.USER_INPUT,
+        reference=f"candidate:{identifier}:{action.value}",
+        original_text=statement,
+    )
     return CareerFact(
         statement=statement,
         verification_status=VerificationStatus.USER_PROVIDED,
-        source=FactSource(
-            source_type=SourceType.USER_INPUT,
-            reference=f"candidate:{identifier}:{action.value}",
-            original_text=statement,
-        ),
+        source=source,
         skills=(statement,) if candidate.candidate_type is CandidateType.SKILL else (),
     )
 

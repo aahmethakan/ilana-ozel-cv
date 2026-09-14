@@ -1,23 +1,24 @@
 import re
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.ai.career.schemas import AIConfidence, AIProposedCandidate, CandidateField, CandidateType
-from app.domain.career import VerificationStatus
+from app.domain.career import FactSource, SourceType, VerificationStatus
 
 NonEmptyText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class CareerFactCandidate(BaseModel):
-    """An AI proposal retained for review, explicitly separate from CareerFact."""
+    """An untrusted AI proposal or explicit user answer retained for review."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     candidate_type: CandidateType
     proposed_statement: NonEmptyText
     proposed_fields: tuple[CandidateField, ...] = Field(default_factory=tuple)
-    evidence_references: tuple[NonEmptyText, ...] = Field(min_length=1)
+    evidence_references: tuple[NonEmptyText, ...] = Field(default_factory=tuple)
+    source: FactSource | None = None
     confidence: AIConfidence
     verification_status: Literal[VerificationStatus.INFERRED_UNVERIFIED] = (
         VerificationStatus.INFERRED_UNVERIFIED
@@ -25,6 +26,14 @@ class CareerFactCandidate(BaseModel):
     requires_user_confirmation: Literal[True] = True
     rationale: NonEmptyText | None = None
     issue_codes: tuple[str, ...] = Field(default_factory=tuple)
+
+    @model_validator(mode="after")
+    def validate_origin(self) -> "CareerFactCandidate":
+        if not self.evidence_references and (
+            self.source is None or self.source.source_type is not SourceType.USER_INPUT
+        ):
+            raise ValueError("Candidates without CV evidence require USER_INPUT provenance.")
+        return self
 
     @property
     def is_claim_usable(self) -> bool:

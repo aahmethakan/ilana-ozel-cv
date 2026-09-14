@@ -77,6 +77,13 @@ def test_candidate_model_rejects_blank_statement_and_reference() -> None:
             evidence_references=("page:1:block:1",),
             confidence=AIConfidence.LOW,
         )
+    with pytest.raises(ValidationError):
+        CareerFactCandidate(
+            candidate_type=CandidateType.SKILL,
+            proposed_statement="Excel",
+            evidence_references=(),
+            confidence=AIConfidence.LOW,
+        )
 
 
 def test_candidate_model_cannot_be_marked_verified_or_confirmation_free() -> None:
