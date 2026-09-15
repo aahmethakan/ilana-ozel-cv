@@ -31,6 +31,7 @@ class CareerFact(BaseModel):
     language: NonEmptyText | None = None
     language_proficiency: NonEmptyText | None = None
     tools: tuple[NonEmptyText, ...] = Field(default_factory=tuple)
+    certifications: tuple[NonEmptyText, ...] = Field(default_factory=tuple)
     metrics: tuple[Metric, ...] = Field(default_factory=tuple)
     action: NonEmptyText | None = None
     object: NonEmptyText | None = None

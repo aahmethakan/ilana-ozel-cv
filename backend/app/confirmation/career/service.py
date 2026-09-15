@@ -61,6 +61,7 @@ def _user_fact(candidate: CareerFactCandidate, statement: str, action: Confirmat
         source=source,
         skills=(statement,) if candidate.candidate_type is CandidateType.SKILL else (),
         tools=(statement,) if candidate.candidate_type is CandidateType.TOOL else (),
+        certifications=(statement,) if candidate.candidate_type is CandidateType.CERTIFICATION else (),
     )
 
 

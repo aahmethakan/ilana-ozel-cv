@@ -2,7 +2,7 @@ import json
 import unicodedata
 from collections.abc import Sequence
 
-from app.domain.career import CareerFact, CareerProfile, LanguageSkill, VerificationStatus
+from app.domain.career import CareerFact, CareerProfile, Certification, LanguageSkill, VerificationStatus
 from app.services.career_profile_assembly.schemas import (
     CareerProfileAssemblyResult,
     ProfileAssemblyConflict,
@@ -28,6 +28,10 @@ def _is_single_explicit_tool(fact: CareerFact) -> bool:
     return not fact.skills and len(fact.tools) == 1 and _normalized(fact.tools[0]) == _normalized(fact.statement)
 
 
+def _is_single_explicit_certification(fact: CareerFact) -> bool:
+    return not fact.skills and not fact.tools and len(fact.certifications) == 1 and _normalized(fact.certifications[0]) == _normalized(fact.statement)
+
+
 def _is_explicit_language(fact: CareerFact) -> bool:
     return fact.language is not None and not fact.skills
 
@@ -46,6 +50,8 @@ def assemble_verified_career_profile(
     skill_keys = {_normalized(fact.statement) for fact in skills}
     tools = list(base_profile.tools)
     tool_keys = {_normalized(fact.statement) for fact in tools}
+    certifications = list(base_profile.certifications)
+    certification_keys = {_normalized(item.name) for item in certifications}
     languages = list(base_profile.languages)
     languages_by_key = {_normalized(item.language): item for item in languages}
     applied: list[CareerFact] = []
@@ -98,6 +104,15 @@ def assemble_verified_career_profile(
             tools.append(fact)
             applied.append(fact)
             continue
+        if _is_single_explicit_certification(fact):
+            key = _normalized(fact.certifications[0])
+            if key in certification_keys:
+                skipped.append(SkippedCareerFact(fact=fact, reason_code="duplicate_certification"))
+                continue
+            certification_keys.add(key)
+            certifications.append(Certification(name=fact.certifications[0], source=fact.source, facts=(fact,)))
+            applied.append(fact)
+            continue
         if not _is_single_explicit_skill(fact):
             skipped.append(SkippedCareerFact(fact=fact, reason_code="unsupported_fact_mapping"))
             continue
@@ -110,7 +125,7 @@ def assemble_verified_career_profile(
         skills.append(fact)
         applied.append(fact)
 
-    profile = base_profile.model_copy(update={"skills": tuple(skills), "tools": tuple(tools), "languages": tuple(languages)})
+    profile = base_profile.model_copy(update={"skills": tuple(skills), "tools": tuple(tools), "certifications": tuple(certifications), "languages": tuple(languages)})
     return CareerProfileAssemblyResult(
         profile=profile,
         applied_facts=tuple(applied),
