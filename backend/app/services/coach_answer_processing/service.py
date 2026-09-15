@@ -88,10 +88,15 @@ def process_coach_answer(
             issue_codes=("insufficient_answer_detail",),
         )
 
-    if question.category is GapCategory.TOOL:
+    if question.category is GapCategory.SKILL:
         if not _is_explicit_named_value(normalized_answer):
             return _result(question, CoachAnswerStatus.DEFERRED, answer=normalized_answer, issue_codes=("insufficient_answer_detail",))
         candidate = _candidate(question, normalized_answer, CandidateType.SKILL)
+        return _result(question, CoachAnswerStatus.CANDIDATE_CREATED, answer=normalized_answer, candidate=candidate)
+    if question.category is GapCategory.TOOL:
+        if not _is_explicit_named_value(normalized_answer):
+            return _result(question, CoachAnswerStatus.DEFERRED, answer=normalized_answer, issue_codes=("insufficient_answer_detail",))
+        candidate = _candidate(question, normalized_answer, CandidateType.TOOL)
         return _result(question, CoachAnswerStatus.CANDIDATE_CREATED, answer=normalized_answer, candidate=candidate)
     if question.category is GapCategory.CERTIFICATION:
         if not _is_explicit_named_value(normalized_answer):

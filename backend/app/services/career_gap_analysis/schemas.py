@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class GapCategory(StrEnum):
     CERTIFICATION = "certification"
     LANGUAGE = "language"
+    SKILL = "skill"
     METRIC = "metric"
     TOOL = "tool"
     LEADERSHIP = "leadership"

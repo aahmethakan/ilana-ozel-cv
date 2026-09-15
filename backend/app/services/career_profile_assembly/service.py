@@ -21,7 +21,11 @@ def _stable_fact_key(fact: CareerFact) -> str:
 
 
 def _is_single_explicit_skill(fact: CareerFact) -> bool:
-    return len(fact.skills) == 1 and _normalized(fact.skills[0]) == _normalized(fact.statement)
+    return not fact.tools and len(fact.skills) == 1 and _normalized(fact.skills[0]) == _normalized(fact.statement)
+
+
+def _is_single_explicit_tool(fact: CareerFact) -> bool:
+    return not fact.skills and len(fact.tools) == 1 and _normalized(fact.tools[0]) == _normalized(fact.statement)
 
 
 def _is_explicit_language(fact: CareerFact) -> bool:
@@ -40,6 +44,8 @@ def assemble_verified_career_profile(
 
     skills = list(base_profile.skills)
     skill_keys = {_normalized(fact.statement) for fact in skills}
+    tools = list(base_profile.tools)
+    tool_keys = {_normalized(fact.statement) for fact in tools}
     languages = list(base_profile.languages)
     languages_by_key = {_normalized(item.language): item for item in languages}
     applied: list[CareerFact] = []
@@ -83,6 +89,15 @@ def assemble_verified_career_profile(
             languages.append(language_skill)
             applied.append(fact)
             continue
+        if _is_single_explicit_tool(fact):
+            key = _normalized(fact.tools[0])
+            if key in tool_keys:
+                skipped.append(SkippedCareerFact(fact=fact, reason_code="duplicate_tool"))
+                continue
+            tool_keys.add(key)
+            tools.append(fact)
+            applied.append(fact)
+            continue
         if not _is_single_explicit_skill(fact):
             skipped.append(SkippedCareerFact(fact=fact, reason_code="unsupported_fact_mapping"))
             continue
@@ -95,7 +110,7 @@ def assemble_verified_career_profile(
         skills.append(fact)
         applied.append(fact)
 
-    profile = base_profile.model_copy(update={"skills": tuple(skills), "languages": tuple(languages)})
+    profile = base_profile.model_copy(update={"skills": tuple(skills), "tools": tuple(tools), "languages": tuple(languages)})
     return CareerProfileAssemblyResult(
         profile=profile,
         applied_facts=tuple(applied),

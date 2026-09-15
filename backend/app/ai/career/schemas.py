@@ -12,6 +12,7 @@ class CandidateType(StrEnum):
     WORK_EXPERIENCE = "work_experience"
     EDUCATION = "education"
     SKILL = "skill"
+    TOOL = "tool"
     LANGUAGE = "language"
     CERTIFICATION = "certification"
     PROJECT = "project"

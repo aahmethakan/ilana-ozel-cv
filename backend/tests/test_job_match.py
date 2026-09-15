@@ -90,7 +90,7 @@ def test_tool_requirements_match_only_explicit_trusted_tool_evidence() -> None:
         verification_status=VerificationStatus.VERIFIED,
         source=source("cv:tool:1"),
     )
-    result = match((requirement("SAP", RequirementCategory.TOOL),), CareerProfile(skills=(tool_fact,)))[0]
+    result = match((requirement("SAP", RequirementCategory.TOOL),), CareerProfile(tools=(tool_fact,)))[0]
 
     assert result.status is RequirementMatchStatus.MATCHED
     assert result.matched_evidence_references == ("cv:tool:1",)
@@ -101,7 +101,7 @@ def test_tool_and_skill_categories_do_not_cross_match() -> None:
     tool_only = CareerFact(statement="SAP", tools=("SAP",), verification_status=VerificationStatus.VERIFIED, source=source("cv:tool:1"))
 
     assert match((requirement("SAP", RequirementCategory.TOOL),), CareerProfile(skills=(skill_only,)))[0].status is RequirementMatchStatus.NOT_EVIDENCED
-    assert match((requirement("SAP", RequirementCategory.SKILL),), CareerProfile(skills=(tool_only,)))[0].status is RequirementMatchStatus.NOT_EVIDENCED
+    assert match((requirement("SAP", RequirementCategory.SKILL),), CareerProfile(tools=(tool_only,)))[0].status is RequirementMatchStatus.NOT_EVIDENCED
 
 
 def test_importance_is_preserved_and_aggregated_without_treating_unknown_as_required() -> None:
@@ -235,8 +235,8 @@ def test_confirmed_coach_answer_with_user_input_provenance_can_match() -> None:
     assert resolution.promoted_fact is not None
 
     result = match(
-        (requirement("SAP"),),
-        CareerProfile(skills=(resolution.promoted_fact,)),
+        (requirement("SAP", RequirementCategory.TOOL),),
+        CareerProfile(tools=(resolution.promoted_fact,)),
     )[0]
 
     assert result.status is RequirementMatchStatus.MATCHED

@@ -13,6 +13,7 @@ from app.domain.career import CareerFact, FactSource, SourceType, VerificationSt
 
 _PROMOTABLE_TYPES = {
     CandidateType.SKILL,
+    CandidateType.TOOL,
     CandidateType.LANGUAGE,
     CandidateType.CERTIFICATION,
     CandidateType.PROJECT,
@@ -59,6 +60,7 @@ def _user_fact(candidate: CareerFactCandidate, statement: str, action: Confirmat
         verification_status=VerificationStatus.USER_PROVIDED,
         source=source,
         skills=(statement,) if candidate.candidate_type is CandidateType.SKILL else (),
+        tools=(statement,) if candidate.candidate_type is CandidateType.TOOL else (),
     )
 
 

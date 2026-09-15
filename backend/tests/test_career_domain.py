@@ -173,6 +173,7 @@ def test_profile_sections_can_be_empty() -> None:
         "work_experiences": [],
         "education": [],
         "skills": [],
+        "tools": [],
         "certifications": [],
         "languages": [],
         "projects": [],

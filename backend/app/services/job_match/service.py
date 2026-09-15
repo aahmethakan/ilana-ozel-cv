@@ -50,9 +50,10 @@ def _result(
 
 def _trusted_named_references(profile: CareerProfile, requirement_text: str, category: RequirementCategory) -> tuple[str, ...]:
     target = _normalized(requirement_text)
+    facts = profile.skills if category is RequirementCategory.SKILL else profile.tools
     return tuple(
         fact.source.reference
-        for fact in profile.skills
+        for fact in facts
         if fact.verification_status in _TRUSTED_VERIFICATION_STATUSES
         and fact.source.reference is not None
         and any(_normalized(value) == target for value in (fact.skills if category is RequirementCategory.SKILL else fact.tools))
@@ -61,11 +62,12 @@ def _trusted_named_references(profile: CareerProfile, requirement_text: str, cat
 
 def _has_unreferenced_trusted_named_evidence(profile: CareerProfile, requirement_text: str, category: RequirementCategory) -> bool:
     target = _normalized(requirement_text)
+    facts = profile.skills if category is RequirementCategory.SKILL else profile.tools
     return any(
         fact.verification_status in _TRUSTED_VERIFICATION_STATUSES
         and fact.source.reference is None
         and any(_normalized(value) == target for value in (fact.skills if category is RequirementCategory.SKILL else fact.tools))
-        for fact in profile.skills
+        for fact in facts
     )
 
 

@@ -116,6 +116,7 @@ class CareerProfile(BaseModel):
     work_experiences: tuple[WorkExperience, ...] = Field(default_factory=tuple)
     education: tuple[Education, ...] = Field(default_factory=tuple)
     skills: tuple[CareerFact, ...] = Field(default_factory=tuple)
+    tools: tuple[CareerFact, ...] = Field(default_factory=tuple)
     certifications: tuple[Certification, ...] = Field(default_factory=tuple)
     languages: tuple[LanguageSkill, ...] = Field(default_factory=tuple)
     projects: tuple[Project, ...] = Field(default_factory=tuple)
