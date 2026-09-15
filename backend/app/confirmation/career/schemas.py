@@ -24,7 +24,7 @@ class ResolutionAudit(BaseModel):
     candidate_id: str
     action: ConfirmationAction
     original_proposed_statement: str
-    evidence_references: tuple[str, ...] = Field(min_length=1)
+    evidence_references: tuple[str, ...] = Field(default_factory=tuple)
     user_correction: str | None = None
     resulting_fact_statement: str | None = None
 
