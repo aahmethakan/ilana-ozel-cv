@@ -6,6 +6,7 @@ from app.services.profile_readiness.schemas import (
     TrustedProfileSummary,
 )
 from app.services.profile_readiness.service import assess_career_profile_readiness
+from app.services.profile_readiness.unified import assess_unified_career_readiness
 
 __all__ = [
     "CareerProfileReadinessFinding",
@@ -14,4 +15,5 @@ __all__ = [
     "ReadinessStatus",
     "TrustedProfileSummary",
     "assess_career_profile_readiness",
+    "assess_unified_career_readiness",
 ]
