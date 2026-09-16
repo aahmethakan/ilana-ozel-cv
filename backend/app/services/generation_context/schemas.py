@@ -1,5 +1,6 @@
 import hashlib
 import json
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -33,9 +34,28 @@ class EligibleAtomicClaim(BaseModel):
 class EligibleContact(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    email: ContactValue | None = None
-    phone: ContactValue | None = None
-    website: ContactValue | None = None
+    email: "EligibleContactField | None" = None
+    phone: "EligibleContactField | None" = None
+    website: "EligibleContactField | None" = None
+
+
+def contact_field_evidence_id(*, field_name: str, value: ContactValue) -> str:
+    payload = {"field_name": field_name, "value": value.model_dump(mode="json")}
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return f"contact-field:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
+
+
+class EligibleContactField(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    evidence_id: str
+    field_name: Literal["email", "phone", "website"]
+    value: ContactValue
+
+    @model_validator(mode="after")
+    def validate_identity(self) -> "EligibleContactField":
+        if self.evidence_id != contact_field_evidence_id(field_name=self.field_name, value=self.value):
+            raise ValueError("Eligible contact field requires its canonical evidence ID.")
+        return self
 
 
 EligibleValue = ProvenancedText | ProvenancedCareerDate | ProvenancedBool
@@ -118,6 +138,8 @@ class GenerationContext(BaseModel):
     @model_validator(mode="after")
     def validate_evidence_ids_are_unique(self) -> "GenerationContext":
         evidence = list(self.atomic_claims)
+        if self.contact:
+            evidence.extend(value for value in (self.contact.email, self.contact.phone, self.contact.website) if value is not None)
         for record in (*self.work_experiences, *self.education):
             values = (record.company, record.title, record.location, record.start_date, record.end_date, record.is_current) if isinstance(record, EligibleWorkExperience) else (record.institution, record.degree, record.field_of_study, record.start_date, record.end_date)
             evidence.extend(value for value in values if value is not None)
@@ -126,10 +148,14 @@ class GenerationContext(BaseModel):
             raise ValueError("Generation evidence IDs must be unique.")
         return self
 
-    def find_eligible_evidence(self, evidence_id: str) -> EligibleAtomicClaim | EligibleStructuredField | None:
+    def find_eligible_evidence(self, evidence_id: str) -> EligibleAtomicClaim | EligibleStructuredField | EligibleContactField | None:
         for item in self.atomic_claims:
             if item.evidence_id == evidence_id:
                 return item
+        if self.contact:
+            for value in (self.contact.email, self.contact.phone, self.contact.website):
+                if value is not None and value.evidence_id == evidence_id:
+                    return value
         for record in (*self.work_experiences, *self.education):
             values = (record.company, record.title, record.location, record.start_date, record.end_date, record.is_current) if isinstance(record, EligibleWorkExperience) else (record.institution, record.degree, record.field_of_study, record.start_date, record.end_date)
             for value in values:

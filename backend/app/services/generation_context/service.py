@@ -1,7 +1,7 @@
 from app.confirmation.structured.schemas import StructuredResolutionStatus
 from app.domain.career import CareerFact, CareerProfile, VerificationStatus
 from app.services.career_context.schemas import UnifiedCareerContext
-from app.services.generation_context.schemas import EligibleAtomicClaim, EligibleContact, EligibleEducation, EligibleStructuredField, EligibleWorkExperience, GenerationContext, atomic_evidence_id, structured_field_evidence_id
+from app.services.generation_context.schemas import EligibleAtomicClaim, EligibleContact, EligibleContactField, EligibleEducation, EligibleStructuredField, EligibleWorkExperience, GenerationContext, atomic_evidence_id, contact_field_evidence_id, structured_field_evidence_id
 from app.services.profile_readiness import ReadinessStatus, assess_unified_career_readiness
 from app.services.profile_readiness.service import _is_directly_sourced
 
@@ -13,10 +13,11 @@ class GenerationContextNotReadyError(ValueError):
 def _eligible_contact(profile: CareerProfile) -> EligibleContact | None:
     if profile.contact is None:
         return None
+    def field(name, value): return EligibleContactField(evidence_id=contact_field_evidence_id(field_name=name, value=value), field_name=name, value=value)
     contact = EligibleContact(
-        email=profile.contact.email if profile.contact.email and _is_directly_sourced(profile.contact.email.source) else None,
-        phone=profile.contact.phone if profile.contact.phone and _is_directly_sourced(profile.contact.phone.source) else None,
-        website=profile.contact.website if profile.contact.website and _is_directly_sourced(profile.contact.website.source) else None,
+        email=field("email", profile.contact.email) if profile.contact.email and _is_directly_sourced(profile.contact.email.source) else None,
+        phone=field("phone", profile.contact.phone) if profile.contact.phone and _is_directly_sourced(profile.contact.phone.source) else None,
+        website=field("website", profile.contact.website) if profile.contact.website and _is_directly_sourced(profile.contact.website.source) else None,
     )
     return contact if any((contact.email, contact.phone, contact.website)) else None
 
