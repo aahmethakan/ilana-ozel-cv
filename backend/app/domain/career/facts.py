@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.domain.career.enums import VerificationStatus
+from app.domain.career.provenance import is_verification_usable
 from app.domain.career.source import FactSource
 
 NonEmptyText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -48,7 +49,4 @@ class CareerFact(BaseModel):
     def is_claim_usable(self) -> bool:
         """Whether this fact may be used as a factual generated-CV claim."""
 
-        return self.verification_status in {
-            VerificationStatus.VERIFIED,
-            VerificationStatus.USER_PROVIDED,
-        }
+        return is_verification_usable(self.verification_status)
