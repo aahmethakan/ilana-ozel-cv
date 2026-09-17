@@ -137,8 +137,20 @@ def test_rendered_claim_id_serialization_determinism_and_immutability(generation
     rendered_b = render_validated_claim(generation_context, second, ClaimRenderingMode.WORK_IDENTITY)
     assert rendered_a.rendered_claim_id == rendered_b.rendered_claim_id
     assert RenderedClaim.model_validate(rendered_a.model_dump(mode="json")) == rendered_a
-    assert set(rendered_a.model_dump()) == {"rendered_claim_id", "text", "claim_kind", "source_claim_id", "supporting_evidence_ids", "rendering_mode"}
+    assert set(rendered_a.model_dump()) == {"rendered_claim_id", "text", "claim_kind", "source_claim_id", "supporting_evidence_ids", "rendering_mode", "structured_lineage"}
+    assert rendered_a.structured_lineage.record_type == "work"
     assert generation_context.model_dump(mode="json") == before_context
     assert first.model_dump(mode="json") == before_claim
     with pytest.raises(ValidationError):
         RenderedClaim.model_validate({**rendered_a.model_dump(mode="json"), "rendered_claim_id": "rendered-claim:spoofed"})
+
+
+def test_rendered_identity_ignores_untrusted_proposal_prose(generation_context) -> None:
+    work = generation_context.work_experiences[0]
+    company = WorkFieldAssertion(evidence_id=work.company.evidence_id, record_id=work.record_id, candidate_id=work.candidate_id, field_name=WorkExperienceField.COMPANY, value="ACME")
+    title = WorkFieldAssertion(evidence_id=work.title.evidence_id, record_id=work.record_id, candidate_id=work.candidate_id, field_name=WorkExperienceField.TITLE, value="Engineer")
+    first = render_validated_claim(generation_context, proposal("foo", ClaimKind.EXPERIENCE_BULLET, company, title), ClaimRenderingMode.WORK_IDENTITY)
+    second = render_validated_claim(generation_context, proposal("bar", ClaimKind.EXPERIENCE_BULLET, company, title), ClaimRenderingMode.WORK_IDENTITY)
+    assert first.source_claim_id != second.source_claim_id
+    assert first.rendered_claim_id == second.rendered_claim_id
+    assert first.text == second.text and first.structured_lineage == second.structured_lineage

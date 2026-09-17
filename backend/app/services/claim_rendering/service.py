@@ -4,6 +4,7 @@ from app.services.claim_rendering.schemas import (
     ClaimRenderingErrorCode,
     ClaimRenderingMode,
     RenderedClaim,
+    StructuredClaimLineage,
     rendered_claim_id,
 )
 from app.services.claim_validation import (
@@ -155,16 +156,26 @@ def render_validated_claim(
     assertions = tuple(claim.assertions)
     text = _render_text(rendering_mode, assertions)
     evidence_ids = tuple(sorted(item.evidence_id for item in assertions))
+    structured = tuple(item for item in assertions if isinstance(item, (WorkFieldAssertion, EducationFieldAssertion)))
+    lineage = None
+    if structured:
+        lineages = {(item.record_type, item.record_id, item.candidate_id) for item in structured}
+        if len(lineages) != 1:
+            _error(ClaimRenderingErrorCode.LINEAGE_MISMATCH, "Structured rendered assertions must share one lineage.")
+        record_type, record_id, candidate_id = lineages.pop()
+        lineage = StructuredClaimLineage(record_type=record_type, record_id=record_id, candidate_id=candidate_id)
     return RenderedClaim(
         rendered_claim_id=rendered_claim_id(
             rendering_mode=rendering_mode,
             text=text,
             source_claim_id=claim.claim_id,
             supporting_evidence_ids=evidence_ids,
+            structured_lineage=lineage,
         ),
         text=text,
         claim_kind=claim.claim_kind,
         source_claim_id=claim.claim_id,
         supporting_evidence_ids=evidence_ids,
         rendering_mode=rendering_mode,
+        structured_lineage=lineage,
     )

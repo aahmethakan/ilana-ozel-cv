@@ -1,6 +1,7 @@
 import hashlib
 import json
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -22,12 +23,13 @@ def rendered_claim_id(
     text: str,
     source_claim_id: str,
     supporting_evidence_ids: tuple[str, ...],
+    structured_lineage: "StructuredClaimLineage | None" = None,
 ) -> str:
     payload = {
         "rendering_mode": rendering_mode.value,
         "text": text,
-        "source_claim_id": source_claim_id,
         "supporting_evidence_ids": tuple(sorted(supporting_evidence_ids)),
+        "structured_lineage": structured_lineage.model_dump(mode="json") if structured_lineage else None,
     }
     canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return f"rendered-claim:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
@@ -48,6 +50,7 @@ class RenderedClaim(BaseModel):
     source_claim_id: str = Field(min_length=1)
     supporting_evidence_ids: tuple[str, ...] = Field(min_length=1)
     rendering_mode: ClaimRenderingMode
+    structured_lineage: "StructuredClaimLineage | None" = None
 
     @model_validator(mode="after")
     def validate_identity(self) -> "RenderedClaim":
@@ -60,10 +63,19 @@ class RenderedClaim(BaseModel):
             text=self.text,
             source_claim_id=self.source_claim_id,
             supporting_evidence_ids=self.supporting_evidence_ids,
+            structured_lineage=self.structured_lineage,
         )
         if self.rendered_claim_id != expected_id:
             raise ValueError("Rendered claim ID must match canonical rendered content.")
         return self
+
+
+class StructuredClaimLineage(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    record_type: Literal["work", "education"]
+    record_id: str = Field(min_length=1)
+    candidate_id: str = Field(min_length=1)
 
 
 class ClaimRenderingErrorCode(StrEnum):
