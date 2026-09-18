@@ -1,7 +1,8 @@
 from app.confirmation.structured.schemas import StructuredResolutionStatus
 from app.domain.career import CareerFact, CareerProfile, VerificationStatus
+from app.domain.career.work_fact_association import WorkFactAssociation
 from app.services.career_context.schemas import UnifiedCareerContext
-from app.services.generation_context.schemas import EligibleAtomicClaim, EligibleContact, EligibleContactField, EligibleEducation, EligibleStructuredField, EligibleWorkExperience, GenerationContext, atomic_evidence_id, contact_field_evidence_id, structured_field_evidence_id
+from app.services.generation_context.schemas import EligibleAtomicClaim, EligibleContact, EligibleContactField, EligibleEducation, EligibleStructuredField, EligibleWorkExperience, EligibleWorkFactAssociation, GenerationContext, atomic_evidence_id, contact_field_evidence_id, structured_field_evidence_id, work_fact_association_evidence_id
 from app.services.profile_readiness import ReadinessStatus, assess_unified_career_readiness
 from app.services.profile_readiness.service import _is_directly_sourced
 
@@ -96,10 +97,15 @@ def _education_entries(context: UnifiedCareerContext) -> tuple[EligibleEducation
     return tuple(result)
 
 
-def build_generation_context(context: UnifiedCareerContext) -> GenerationContext:
+def build_generation_context(context: UnifiedCareerContext, *, work_fact_associations: tuple[WorkFactAssociation, ...] = ()) -> GenerationContext:
     readiness = assess_unified_career_readiness(context)
     if readiness.status is not ReadinessStatus.READY:
         raise GenerationContextNotReadyError("Generation context requires unified readiness status READY.")
     if context.structured_assembly.conflicts:
         raise ValueError("A generation context cannot include structured assembly conflicts.")
-    return GenerationContext(contact=_eligible_contact(context.atomic_profile), atomic_claims=_atomic_claims(context.atomic_profile), work_experiences=_work_entries(context), education=_education_entries(context))
+    atomic_claims = _atomic_claims(context.atomic_profile)
+    work_experiences = _work_entries(context)
+    atomic_ids = {claim.evidence_id for claim in atomic_claims}
+    work_pairs = {(work.record_id, work.candidate_id) for work in work_experiences}
+    projected = tuple(EligibleWorkFactAssociation(association_evidence_id=work_fact_association_evidence_id(association_id=association.association_id), association_id=association.association_id, atomic_evidence_id=association.atomic_evidence_id, work_record_id=association.work_record_id, work_candidate_id=association.work_candidate_id) for association in work_fact_associations if association.atomic_evidence_id in atomic_ids and (association.work_record_id, association.work_candidate_id) in work_pairs)
+    return GenerationContext(contact=_eligible_contact(context.atomic_profile), atomic_claims=atomic_claims, work_experiences=work_experiences, education=_education_entries(context), work_fact_associations=projected)

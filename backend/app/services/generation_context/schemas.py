@@ -13,6 +13,31 @@ def atomic_evidence_id(*, claim_type: str, statement: str, verification_status: 
     return f"atomic:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
 
 
+def work_fact_association_evidence_id(*, association_id: str) -> str:
+    canonical = json.dumps({"association_id": association_id}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return f"work-fact-association:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
+
+
+class EligibleWorkFactAssociation(BaseModel):
+    """Generation-safe reference to one already trusted work-fact relationship."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    association_evidence_id: str
+    association_id: str
+    atomic_evidence_id: str
+    work_record_id: str
+    work_candidate_id: str
+
+    @model_validator(mode="after")
+    def validate_identity(self) -> "EligibleWorkFactAssociation":
+        if any(not value.strip() or value != value.strip() for value in (self.association_id, self.atomic_evidence_id, self.work_record_id, self.work_candidate_id)):
+            raise ValueError("Eligible work-fact association identifiers must be canonical.")
+        if self.association_evidence_id != work_fact_association_evidence_id(association_id=self.association_id):
+            raise ValueError("Eligible work-fact association requires canonical evidence ID.")
+        return self
+
+
 class EligibleAtomicClaim(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -134,21 +159,26 @@ class GenerationContext(BaseModel):
     atomic_claims: tuple[EligibleAtomicClaim, ...] = Field(default_factory=tuple)
     work_experiences: tuple[EligibleWorkExperience, ...] = Field(default_factory=tuple)
     education: tuple[EligibleEducation, ...] = Field(default_factory=tuple)
+    work_fact_associations: tuple[EligibleWorkFactAssociation, ...] = Field(default_factory=tuple)
 
     @model_validator(mode="after")
     def validate_evidence_ids_are_unique(self) -> "GenerationContext":
         evidence = list(self.atomic_claims)
+        association_evidence_ids = [association.association_evidence_id for association in self.work_fact_associations]
         if self.contact:
             evidence.extend(value for value in (self.contact.email, self.contact.phone, self.contact.website) if value is not None)
         for record in (*self.work_experiences, *self.education):
             values = (record.company, record.title, record.location, record.start_date, record.end_date, record.is_current) if isinstance(record, EligibleWorkExperience) else (record.institution, record.degree, record.field_of_study, record.start_date, record.end_date)
             evidence.extend(value for value in values if value is not None)
-        ids = [item.evidence_id for item in evidence]
+        ids = [item.evidence_id for item in evidence] + association_evidence_ids
         if len(ids) != len(set(ids)):
             raise ValueError("Generation evidence IDs must be unique.")
         return self
 
-    def find_eligible_evidence(self, evidence_id: str) -> EligibleAtomicClaim | EligibleStructuredField | EligibleContactField | None:
+    def find_eligible_evidence(self, evidence_id: str) -> EligibleAtomicClaim | EligibleStructuredField | EligibleContactField | EligibleWorkFactAssociation | None:
+        for item in self.work_fact_associations:
+            if item.association_evidence_id == evidence_id:
+                return item
         for item in self.atomic_claims:
             if item.evidence_id == evidence_id:
                 return item
