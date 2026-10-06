@@ -19,18 +19,24 @@ _SUPPORTED_NOT_EVIDENCED = {
     RequirementCategory.TOOL,
     RequirementCategory.LANGUAGE,
     RequirementCategory.CERTIFICATION,
+    RequirementCategory.OTHER,
+    RequirementCategory.EXPERIENCE,
 }
 _CATEGORY_MAP = {
     RequirementCategory.SKILL: GapCategory.SKILL,
     RequirementCategory.TOOL: GapCategory.TOOL,
     RequirementCategory.LANGUAGE: GapCategory.LANGUAGE,
     RequirementCategory.CERTIFICATION: GapCategory.CERTIFICATION,
+    RequirementCategory.OTHER: GapCategory.SKILL,
+    RequirementCategory.EXPERIENCE: GapCategory.SKILL,
 }
 _TARGET_SECTION = {
     RequirementCategory.SKILL: "skills",
     RequirementCategory.TOOL: "skills",
     RequirementCategory.LANGUAGE: "languages",
     RequirementCategory.CERTIFICATION: "certifications",
+    RequirementCategory.OTHER: "additional_facts",
+    RequirementCategory.EXPERIENCE: "experience",
 }
 _LANGUAGE_PREFIX = re.compile(r"^(?P<language>[A-Za-z]+)\s+.+$")
 
@@ -83,6 +89,11 @@ def _question_text(requirement: JobRequirement, status: RequirementMatchStatus) 
             f"Do you hold {requirement.text} or another relevant certification? If yes, enter the certification name exactly.",
             "missing_certification_evidence",
         )
+    if requirement.category in {RequirementCategory.OTHER, RequirementCategory.EXPERIENCE}:
+        return (
+            f"Do you have explicit experience or eligibility evidence for: {requirement.text}? If yes, describe only the factual detail you would include in your CV.",
+            "missing_job_requirement_evidence",
+        )
     return None
 
 
@@ -114,6 +125,10 @@ def _make_question(requirement: JobRequirement, status: RequirementMatchStatus) 
         evidence_references=(),
         missing_signal=requirement.requirement_id,
         answer_type=AnswerType.FREE_TEXT if requirement.category is RequirementCategory.LANGUAGE else AnswerType.YES_NO_DETAILS,
+        question_type=purpose,
+        related_requirement_id=requirement.requirement_id,
+        expected_information="Only an accurate first-person detail; no inferred job requirement is accepted.",
+        potential_impact=f"May strengthen the { _TARGET_SECTION[requirement.category] } section after confirmation.",
     )
     return JobCoachQuestion(
         question=question,

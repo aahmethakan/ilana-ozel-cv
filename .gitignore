@@ -37,6 +37,15 @@ Thumbs.db
 # Logs
 *.log
 
+# Local session persistence
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-wal
+*.db-shm
+
 # Generated files
 backend/generated/
 frontend/generated/

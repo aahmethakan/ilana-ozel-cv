@@ -17,6 +17,7 @@ _TRUSTED_STATUSES = {VerificationStatus.VERIFIED, VerificationStatus.USER_PROVID
 _PRIORITY_ORDER = {GapPriority.HIGH: 0, GapPriority.MEDIUM: 1, GapPriority.LOW: 2}
 _LEADERSHIP_TERMS = {"lead", "manager", "supervisor", "director", "principal", "head"}
 _PROJECT_TERMS = {"project", "program", "manager", "lead"}
+_INTERNSHIP_TERMS = {"intern", "stajyer", "trainee", "apprentice"}
 
 
 def _normalized(value: str) -> str:
@@ -88,6 +89,17 @@ def _role_terms(experience: WorkExperience, context: GapAnalysisContext) -> set[
     values = [experience.title, context.target_role or "", context.career_direction or ""]
     values.extend(context.target_job_keywords)
     return set(" ".join(values).casefold().replace("/", " ").replace("-", " ").split())
+
+
+def _role_priority(experience: WorkExperience, context: GapAnalysisContext) -> tuple[int, int, int, str]:
+    """Current and recent substantive roles come first; an open range is not current."""
+    terms = _role_terms(experience, context)
+    internship = bool(terms & _INTERNSHIP_TERMS)
+    end = experience.end_date or experience.start_date
+    year = end.year
+    month = getattr(end, "month", None) or 1
+    impact = any(_trusted(fact) and (fact.metrics or fact.tools or fact.skills) for fact in experience.facts)
+    return (0 if experience.is_current else 1, 1 if internship else 0, -year * 12 - month - (1 if impact else 0), _normalized(experience.title))
 
 
 def _experience_questions(
@@ -187,7 +199,7 @@ def analyze_career_profile_gaps(
                 question_text="Do you hold any professional certifications that are not currently listed?",
                 reason="No certifications are currently listed in the trusted profile.",
                 target_section="certifications",
-                priority=GapPriority.MEDIUM,
+                priority=GapPriority.LOW,
                 missing_signal="no_certifications",
                 answer_type=AnswerType.YES_NO_DETAILS,
             )
@@ -199,12 +211,12 @@ def analyze_career_profile_gaps(
                 question_text="Are there languages and explicit proficiency levels that are not currently listed?",
                 reason="No languages are currently listed in the trusted profile.",
                 target_section="languages",
-                priority=GapPriority.MEDIUM,
+                priority=GapPriority.LOW,
                 missing_signal="no_languages",
                 answer_type=AnswerType.FREE_TEXT,
             )
         )
-    for experience in profile.work_experiences:
+    for experience in sorted(profile.work_experiences, key=lambda item: _role_priority(item, active_context)):
         experience_questions, experience_skipped = _experience_questions(experience, active_context)
         questions.extend(experience_questions)
         skipped.extend(experience_skipped)
@@ -212,9 +224,27 @@ def analyze_career_profile_gaps(
     unique_questions = {question.question_id: question for question in questions}
     ordered_questions = sorted(
         unique_questions.values(),
-        key=lambda question: (_PRIORITY_ORDER[question.priority], question.question_id),
+        key=lambda question: (
+            _PRIORITY_ORDER[question.priority],
+            _role_priority(next((role for role in profile.work_experiences if role.title == question.related_role), profile.work_experiences[0]), active_context) if question.related_role and profile.work_experiences else (9, 9, 9, ""),
+            question.category.value,
+            question.question_id,
+        ),
     )
+    # An initial coach batch should be actionable, not four near-identical metric prompts.
+    selected: list[CoachQuestion] = []
+    category_limits = {GapCategory.METRIC: 1, GapCategory.TOOL: 2}
+    category_counts: dict[GapCategory, int] = {}
+    for question in ordered_questions:
+        if category_counts.get(question.category, 0) >= category_limits.get(question.category, active_context.max_questions):
+            continue
+        selected.append(question)
+        category_counts[question.category] = category_counts.get(question.category, 0) + 1
+        if len(selected) == active_context.max_questions:
+            break
     return GapAnalysisResult(
-        questions=tuple(ordered_questions[: active_context.max_questions]),
+        questions=tuple(selected),
         skipped_opportunities=tuple(sorted(skipped, key=lambda item: (item.category.value, item.reason_code))),
+        total_recommendations=len(ordered_questions),
+        more_recommendations_available=len(ordered_questions) > len(selected),
     )

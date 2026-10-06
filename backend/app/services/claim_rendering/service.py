@@ -13,10 +13,11 @@ from app.services.claim_validation import (
     EducationFieldAssertion,
     GeneratedClaimProposal,
     WorkFieldAssertion,
+    WorkFactAssociationAssertion,
     validate_generated_claim,
 )
 from app.services.evidence_convergence import EducationField, WorkExperienceField
-from app.services.generation_context import GenerationContext
+from app.services.generation_context import EligibleAtomicClaim, GenerationContext
 
 
 def _date_text(value: CareerDate) -> str:
@@ -128,6 +129,8 @@ def _education_date(assertions: tuple[object, ...]) -> str:
 
 
 def _render_text(mode: ClaimRenderingMode, assertions: tuple[object, ...]) -> str:
+    if mode is ClaimRenderingMode.WORK_FACT_EXACT:
+        return ""  # resolved from eligible atomic evidence below; caller text is never consumed.
     if mode is ClaimRenderingMode.ATOMIC_EXACT:
         return _require_exactly(assertions, AtomicClaimAssertion, mode).value
     if mode is ClaimRenderingMode.CONTACT_EXACT:
@@ -154,10 +157,19 @@ def render_validated_claim(
     if validation.findings:
         _error(ClaimRenderingErrorCode.CLAIM_VALIDATION_FAILED, "Claim assertions are not fully supported by this generation context.")
     assertions = tuple(claim.assertions)
-    text = _render_text(rendering_mode, assertions)
-    evidence_ids = tuple(sorted(item.evidence_id for item in assertions))
+    if rendering_mode is ClaimRenderingMode.WORK_FACT_EXACT:
+        assertion = _require_exactly(assertions, WorkFactAssociationAssertion, rendering_mode)
+        atomic = generation_context.find_eligible_evidence(assertion.atomic_evidence_id)
+        if atomic is None or not isinstance(atomic, EligibleAtomicClaim):
+            _error(ClaimRenderingErrorCode.CLAIM_VALIDATION_FAILED, "Associated atomic evidence is not eligible.")
+        text = atomic.statement
+        evidence_ids = tuple(sorted((assertion.association_evidence_id, assertion.atomic_evidence_id)))
+        lineage = StructuredClaimLineage(record_type="work", record_id=assertion.work_record_id, candidate_id=assertion.work_candidate_id)
+    else:
+        text = _render_text(rendering_mode, assertions)
+        evidence_ids = tuple(sorted(item.evidence_id for item in assertions))
+        lineage = None
     structured = tuple(item for item in assertions if isinstance(item, (WorkFieldAssertion, EducationFieldAssertion)))
-    lineage = None
     if structured:
         lineages = {(item.record_type, item.record_id, item.candidate_id) for item in structured}
         if len(lineages) != 1:

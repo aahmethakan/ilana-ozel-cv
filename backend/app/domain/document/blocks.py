@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.document.enums import BlockType, SectionType
+from app.domain.document.evidence import ParserConfidence
 from app.domain.document.location import NonEmptyText, SourceLocation
 
 
@@ -35,6 +36,7 @@ class CVSection(BaseModel):
     section_type: SectionType
     original_heading: NonEmptyText | None = None
     block_references: tuple[NonEmptyText, ...] = Field(default_factory=tuple)
+    confidence: ParserConfidence = ParserConfidence.HIGH
 
 
 class DocumentPage(BaseModel):

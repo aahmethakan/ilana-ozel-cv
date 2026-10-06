@@ -15,6 +15,7 @@ _LOW_INFORMATION_ANSWERS = {"yes", "evet", "maybe", "not sure", "bilmiyorum"}
 _NAMED_VALUE_PATTERN = re.compile(r"^[^\n,;.!?]{1,80}$")
 _LANGUAGE_PATTERN = re.compile(r"^(?P<language>[A-Za-z][A-Za-z ]{1,39})\s+-\s+(?P<proficiency>[A-Za-z0-9][A-Za-z0-9 .-]{0,39})$")
 _NON_VALUE_PREFIXES = ("i use ", "i used ", "i have ")
+_SIEMENS_PATTERN = re.compile(r"\bSiemens\s+S7[- ]?(?:1200|1500)\b", re.I)
 
 
 def _normalized(value: str) -> str:
@@ -94,6 +95,11 @@ def process_coach_answer(
         candidate = _candidate(question, normalized_answer, CandidateType.SKILL)
         return _result(question, CoachAnswerStatus.CANDIDATE_CREATED, answer=normalized_answer, candidate=candidate)
     if question.category is GapCategory.TOOL:
+        # A Turkish/English sentence can contain a precise tool name. Preserve only
+        # the explicitly stated product; do not turn surrounding prose into claims.
+        if match := _SIEMENS_PATTERN.search(normalized_answer):
+            candidate = _candidate(question, match.group(0), CandidateType.TOOL)
+            return _result(question, CoachAnswerStatus.CANDIDATE_CREATED, answer=normalized_answer, candidate=candidate)
         if not _is_explicit_named_value(normalized_answer):
             return _result(question, CoachAnswerStatus.DEFERRED, answer=normalized_answer, issue_codes=("insufficient_answer_detail",))
         candidate = _candidate(question, normalized_answer, CandidateType.TOOL)

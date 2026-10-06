@@ -20,3 +20,7 @@ class NoMachineReadableTextError(PDFParserError):
 
 class PDFInputTooLargeError(PDFParserError):
     """Raised when PDF input exceeds the configured parser limit."""
+
+
+class PDFPageLimitExceededError(PDFParserError):
+    """Raised before extraction when a PDF has too many pages."""

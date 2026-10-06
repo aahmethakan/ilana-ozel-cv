@@ -8,6 +8,7 @@ from app.services.claim_validation.schemas import (
     EducationFieldAssertion,
     GeneratedClaimProposal,
     WorkFieldAssertion,
+    WorkFactAssociationAssertion,
     claim_id,
 )
 from app.services.claim_validation.service import validate_generated_claim
@@ -22,6 +23,7 @@ __all__ = [
     "EducationFieldAssertion",
     "GeneratedClaimProposal",
     "WorkFieldAssertion",
+    "WorkFactAssociationAssertion",
     "claim_id",
     "validate_generated_claim",
 ]

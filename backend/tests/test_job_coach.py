@@ -125,8 +125,9 @@ def test_non_language_partial_and_unsupported_categories_are_deferred() -> None:
         match_item(experience, RequirementMatchStatus.NOT_EVIDENCED),
     )
 
-    assert result.questions == ()
-    assert {item.reason_code for item in result.skipped_requirements} == {"unsupported_partial_category", "unsupported_category"}
+    assert len(result.questions) == 1
+    assert result.questions[0].requirement_id == experience.requirement_id
+    assert {item.reason_code for item in result.skipped_requirements} == {"unsupported_partial_category"}
 
 
 def test_order_limit_and_duplicate_identity_are_deterministic() -> None:

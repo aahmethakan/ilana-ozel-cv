@@ -34,7 +34,7 @@ class GapAnalysisContext(BaseModel):
     career_direction: str | None = None
     locale: str | None = None
     cv_language: str | None = None
-    max_questions: int = Field(default=8, ge=1, le=8)
+    max_questions: int = Field(default=6, ge=1, le=8)
 
 
 class CoachQuestion(BaseModel):
@@ -52,6 +52,11 @@ class CoachQuestion(BaseModel):
     missing_signal: str
     answer_type: AnswerType
     related_role: str | None = None
+    question_type: str | None = None
+    related_requirement_id: str | None = None
+    expected_information: str | None = None
+    potential_impact: str | None = None
+    status: str = "open"
 
 
 class SkippedOpportunity(BaseModel):
@@ -66,3 +71,5 @@ class GapAnalysisResult(BaseModel):
 
     questions: tuple[CoachQuestion, ...] = Field(default_factory=tuple)
     skipped_opportunities: tuple[SkippedOpportunity, ...] = Field(default_factory=tuple)
+    total_recommendations: int = Field(default=0, ge=0)
+    more_recommendations_available: bool = False

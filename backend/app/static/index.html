@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>İlana Özel CV</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20260921-10">
+  <link rel="stylesheet" href="/static/legal.css?v=20261006-46">
+</head>
+<body>
+  <main>
+    <header><p>GELİŞTİRME ARAYÜZÜ</p><h1>İlana Özel CV</h1><span>CV’nizdeki mevcut kanıtları iş ilanıyla güvenli şekilde karşılaştırın.</span></header>
+    <p id="status" aria-live="polite"></p>
+    <section><p>1. CV YÜKLE</p><h2>CV analizi</h2><input id="pdf" type="file" accept="application/pdf,.pdf"><button id="analyze-cv">CV’yi Analiz Et</button><p class="note">Çalışma oturumu kısa süreli olarak sunucuda saklanır; tarayıcı yenilendiğinde geri yüklenebilir.</p><button id="delete-session" type="button" disabled>Oturumu ve Verilerimi Sil</button><p class="note">Bu işlem mevcut çalışma oturumunu ve sunucuda bu oturum için tutulan çalışma verisini siler.</p></section>
+    <div id="cv-results" hidden>
+      <section><p>2. CV ANALİZİ</p><h2>Kariyer Profili</h2><div id="profile"></div></section>
+      <section><h2>CV Kalite Puanı</h2><div id="quality"></div></section>
+      <section id="continuation-area" hidden><h2>Şirket Devamlılığı Onayı</h2><div id="continuation-candidates"></div></section>
+      <section id="readiness-area" hidden><h2>Taslak Hazırlık Kontrolü</h2><div id="readiness-items"></div></section>
+      <section><h2>Genel CV Koçu</h2><div id="general-coach"></div></section>
+    </div>
+    <section><p>3. İŞ İLANI</p><h2>İlan metni</h2><textarea id="job-text" rows="10" placeholder="İş ilanı metnini buraya yapıştırın."></textarea><button id="analyze-job" disabled>İlanı Analiz Et</button></section>
+    <div id="job-results" hidden>
+      <section><p>4. İŞ UYUMU</p><h2>İlan analizi</h2><div id="job-analysis"></div></section>
+      <section><h2>İş Uyumu Puanı</h2><div id="job-score"></div><div id="requirements"></div></section>
+      <section><h2>İlana Özel Koç</h2><div id="job-coach"></div></section>
+    </div>
+    <section id="generation-area" hidden><p>5. CV TASLAĞI</p><h2>CV Taslağını Oluştur</h2><p class="note">Taslak, yalnızca doğrulanmış CV verilerinden deterministic olarak oluşturulur.</p><fieldset id="generation-mode"><legend>Oluşturma modu</legend><label><input type="radio" name="generation-mode" value="general" checked> <strong>Genel CV</strong><span> İş ilanına bağlı olmadan mevcut CV'deki doğrulanmış bilgileri kullanır.</span></label><label><input type="radio" name="generation-mode" value="targeted"> <strong>İlana Özel CV</strong><span> Analiz edilen iş ilanına uygun doğrulanmış deneyim ve becerileri seçer.</span></label></fieldset><button id="generate-review">CV Taslağını Oluştur</button><p id="generation-message" class="note" aria-live="polite"></p></section>
+    <section id="generation-review" hidden aria-live="polite"></section>
+    <section id="quality-area" hidden aria-live="polite"><p>7. CV KALİTESİ</p><button id="quality-cv" disabled>CV Kalitesini Gör</button><div id="quality-result" class="note"></div></section>
+    <section id="validation-area" hidden aria-live="polite"><p>7. CV KONTROLÜ</p><button id="validate-cv" disabled>CV'yi Kontrol Et</button><div id="validation-result" class="note"></div></section>
+    <section id="cover-letter-area" hidden aria-live="polite"><p>8. ÖN YAZI</p><button id="generate-cover-letter" disabled>Ön Yazı Oluştur</button><button id="download-cover-docx" disabled>Word İndir</button><button id="download-cover-pdf" disabled>PDF İndir</button><div id="cover-letter-result" class="note"></div></section>
+    <section class="muted"><p>6. ÇIKTI</p><button id="download-docx" disabled>CV'yi Word olarak indir</button><button id="download-pdf" disabled>CV'yi PDF olarak indir</button></section>
+    <footer class="legal-notice" aria-label="License and source code information">
+      <p>Copyright (C) 2026 <span id="copyright-holder">AHA</span>. This program may be copied and shared under GNU AGPLv3 and is provided without warranty.</p>
+      <p><a href="/license">License</a> <span aria-hidden="true">&middot;</span> <a href="/third-party-notices">Third-party notices</a> <span aria-hidden="true">&middot;</span> <a id="source-code-link" href="#" rel="noopener" hidden>Source code</a> <span id="source-code-status">A source-code link must be configured before production deployment.</span> <span id="release-version"></span></p>
+    </footer>
+  </main>
+  <script src="/static/app.js?v=20261005-42b"></script>
+</body>
+</html>

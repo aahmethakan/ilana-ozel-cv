@@ -4,6 +4,7 @@ from app.parsers.pdf.exceptions import (
     InvalidPDFError,
     NoMachineReadableTextError,
     PDFInputTooLargeError,
+    PDFPageLimitExceededError,
     PDFParserError,
 )
 from app.parsers.pdf.parser import DEFAULT_MAX_PDF_BYTES, PDFParser, parse_pdf
@@ -15,6 +16,7 @@ __all__ = [
     "InvalidPDFError",
     "NoMachineReadableTextError",
     "PDFInputTooLargeError",
+    "PDFPageLimitExceededError",
     "PDFParser",
     "PDFParserError",
     "parse_pdf",

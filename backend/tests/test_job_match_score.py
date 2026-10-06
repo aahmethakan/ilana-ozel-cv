@@ -12,7 +12,7 @@ from app.domain.job import (
     RequirementImportance,
 )
 from app.services.job_analysis import UnresolvedJobItem
-from app.services.job_match import JobMatchResult, RequirementMatchResult, RequirementMatchStatus, match_job_to_profile
+from app.services.job_match import JobMatchResult, RequirementMatchResult, RequirementMatchStatus, RequirementMatchType, match_job_to_profile
 from app.services.job_match_score import calculate_job_match_score
 from app.services.job_match_score import service as score_service
 
@@ -65,6 +65,17 @@ def test_basic_scores_are_reproducible(statuses: tuple[RequirementMatchStatus, .
 
     assert result.match_score == expected_score
     assert result.evaluation_coverage == 100
+
+
+def test_controlled_semantic_match_has_limited_score_impact() -> None:
+    exact = matched_result(requirement("Excel"), RequirementMatchStatus.MATCHED)
+    semantic = matched_result(requirement("Sales and Operations Planning"), RequirementMatchStatus.MATCHED).model_copy(
+        update={"match_type": RequirementMatchType.CONTROLLED_SEMANTIC}
+    )
+
+    result = score(exact, semantic)
+
+    assert result.match_score == 75
 
 
 def test_manual_weighted_formula_uses_half_units_and_required_weight() -> None:

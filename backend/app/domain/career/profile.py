@@ -4,7 +4,10 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.domain.career.facts import CareerFact
+from app.domain.career.dates import CareerDate
 from app.domain.career.source import FactSource
+from app.domain.career.enums import VerificationStatus
+from app.domain.career.provenance import ProvenancedText
 
 NonEmptyText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -15,18 +18,19 @@ class WorkExperience(BaseModel):
     company: NonEmptyText
     title: NonEmptyText
     location: NonEmptyText | None = None
-    start_date: date
-    end_date: date | None = None
+    start_date: date | CareerDate
+    end_date: date | CareerDate | None = None
     is_current: bool = False
+    date_range_open: bool = False
     facts: tuple[CareerFact, ...] = Field(default_factory=tuple)
 
     @model_validator(mode="after")
     def validate_dates(self) -> "WorkExperience":
         if self.is_current and self.end_date is not None:
             raise ValueError("Current work experiences cannot have an end date.")
-        if not self.is_current and self.end_date is None:
+        if not self.is_current and self.end_date is None and not self.date_range_open:
             raise ValueError("Past work experiences require an end date.")
-        if self.end_date is not None and self.end_date < self.start_date:
+        if self.end_date is not None and _date_sort_key(self.end_date) < _date_sort_key(self.start_date):
             raise ValueError("End date cannot be before start date.")
         return self
 
@@ -37,8 +41,8 @@ class Education(BaseModel):
     institution: NonEmptyText
     degree: NonEmptyText | None = None
     field_of_study: NonEmptyText | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    start_date: date | CareerDate | None = None
+    end_date: date | CareerDate | None = None
     facts: tuple[CareerFact, ...] = Field(default_factory=tuple)
 
     @model_validator(mode="after")
@@ -46,10 +50,16 @@ class Education(BaseModel):
         if (
             self.start_date is not None
             and self.end_date is not None
-            and self.end_date < self.start_date
+            and _date_sort_key(self.end_date) < _date_sort_key(self.start_date)
         ):
             raise ValueError("Education end date cannot be before start date.")
         return self
+
+
+def _date_sort_key(value: date | CareerDate) -> tuple[int, int, int]:
+    if isinstance(value, CareerDate):
+        return value.year, value.month or 1, 1
+    return value.year, value.month, value.day
 
 
 class LanguageSkill(BaseModel):
@@ -67,6 +77,16 @@ class ContactValue(BaseModel):
 
     value: NonEmptyText
     source: FactSource
+    verification_status: VerificationStatus = VerificationStatus.VERIFIED
+
+
+class CandidateIdentity(BaseModel):
+    """Authoritative parser-promoted identity only; uncertain candidates stay in document evidence."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: ProvenancedText | None = None
+    headline: ProvenancedText | None = None
 
 
 class ContactInfo(BaseModel):
@@ -111,6 +131,7 @@ class CareerProfile(BaseModel):
 
     full_name: NonEmptyText | None = None
     headline: NonEmptyText | None = None
+    identity: CandidateIdentity | None = Field(default=None, exclude=True)
     contact: ContactInfo | None = None
     summary_facts: tuple[CareerFact, ...] = Field(default_factory=tuple)
     work_experiences: tuple[WorkExperience, ...] = Field(default_factory=tuple)

@@ -19,17 +19,18 @@ from app.services.job_analysis.schemas import (
 )
 
 _HEADING_CONTEXT = {
-    "responsibilities": "responsibility", "duties": "responsibility", "what you'll do": "responsibility",
+    "responsibilities": "responsibility", "duties": "responsibility", "what you'll do": "responsibility", "your role": "responsibility", "role": "responsibility",
     "sorumluluklar": "responsibility", "görevler": "responsibility",
-    "requirements": "required", "qualifications": "required", "must have": "required", "required qualifications": "required",
+    "requirements": "required", "qualifications": "required", "must have": "required", "required qualifications": "required", "your experience": "required", "what we're looking for": "required",
     "aranan nitelikler": "required", "gereksinimler": "required", "yetkinlikler": "required",
-    "preferred qualifications": "preferred", "preferred": "preferred", "nice to have": "preferred",
+    "preferred qualifications": "preferred", "preferred": "preferred", "nice to have": "preferred", "it would be desirable if you had": "preferred", "desirable qualifications": "preferred",
     "tercih edilen": "preferred", "tercih sebebi": "preferred",
     "skills": "skills", "tools": "tools", "technologies": "tools",
     "education": "education", "eğitim": "education", "experience": "experience", "deneyim": "experience",
     "languages": "language", "language": "language", "yabancı dil": "language",
     "certifications": "certification", "sertifikalar": "certification",
     "about the role": "unknown",
+    "about the job": "unknown", "role details": "unknown", "location": "unknown", "working conditions": "unknown",
     "who you are": "unknown",
 }
 _BULLET_PREFIX = re.compile(r"^\s*(?:[-*•–—]|\d+[.)])\s*")
@@ -38,8 +39,9 @@ _INLINE_REQUIRED = re.compile(r"\b(?:must|required|mandatory|minimum)\b", re.I)
 _INLINE_PREFERRED = re.compile(r"\b(?:preferred|nice to have|desirable|advantage)\b", re.I)
 _EDUCATION = re.compile(r"\b(?:bachelor'?s|master'?s|degree|lisans|yüksek lisans)\b", re.I)
 _LANGUAGE = re.compile(r"\b(?:english|ingilizce|german|almanca|french|fransızca)\b", re.I)
-_TITLE_LABEL = re.compile(r"^(?:job title|title|position)\s*:\s*(.+)$", re.I)
+_TITLE_LABEL = re.compile(r"^(?:job title|title|position|pozisyon)\s*:\s*(.+)$", re.I)
 _COMPANY_LABEL = re.compile(r"^(?:company|employer)\s*:\s*(.+)$", re.I)
+_ROLE_PATTERNS = (re.compile(r"(?:we(?:’|'| a)?re looking for (?:an? )?)(.+?)(?:\s+to\s+join|[,\.])", re.I), re.compile(r"^as (?:an? )?([^,]+?)[,.:]", re.I))
 
 
 def _normalized(value: str) -> str:
@@ -48,6 +50,29 @@ def _normalized(value: str) -> str:
 
 def _heading(line: str) -> str | None:
     return _HEADING_CONTEXT.get(_normalized(line).rstrip(":"))
+
+
+def _inline_heading(line: str) -> tuple[str, str] | None:
+    """Return an explicit ``heading: value`` pair without guessing content."""
+
+    label, separator, value = line.partition(":")
+    if not separator or not value.strip():
+        return None
+    context = _heading(label)
+    return (context, value.strip()) if context is not None else None
+
+
+def _inline_requirement_items(context: str, text: str) -> tuple[str, ...]:
+    """Keep explicitly comma-delimited inline requirement values independent.
+
+    A pasted ``Requirements: A, B`` line explicitly presents a list.  Splitting
+    that list does not classify the values or synthesize any candidate evidence;
+    it only gives each stated requirement its own source-backed job item.
+    """
+
+    if context not in {"required", "preferred"} or "," not in text:
+        return (text,)
+    return tuple(item.strip() for item in text.split(",") if item.strip())
 
 
 def _importance(context: str | None, text: str) -> tuple[RequirementImportance, tuple[RequirementImportance, ...]]:
@@ -163,30 +188,42 @@ def analyze_job_description(document: JobDocument) -> JobAnalysisResult:
         if recognized is not None:
             context = recognized
             continue
+        inline = _inline_heading(stripped)
+        if inline is not None:
+            context, stripped = inline
         text = _BULLET_PREFIX.sub("", stripped).strip()
         if not text:
             continue
+        if title is None:
+            for pattern in _ROLE_PATTERNS:
+                match = pattern.search(text)
+                if match is not None:
+                    candidate = match.group(1).strip()
+                    if 2 <= len(candidate) <= 100:
+                        title = candidate
+                        break
         if context == "responsibility":
             responsibilities.append(_make_requirement(RequirementCategory.RESPONSIBILITY, text, RequirementImportance.UNKNOWN, reference, raw_line))
             continue
         if context == "unknown":
             unresolved.append(UnresolvedJobItem(source_reference=reference, original_text=raw_line, reason_code="unknown_section"))
             continue
-        category = _category(context, text)
-        if category is None:
-            unresolved.append(UnresolvedJobItem(source_reference=reference, original_text=raw_line, reason_code="unknown_section"))
-            continue
-        importance, observed_values = _importance(context, text)
-        requirements.append(_make_requirement(category, text, importance, reference, raw_line))
-        if len(observed_values) > 1:
-            importance_conflicts.append(JobImportanceConflict(
-                category=category.value,
-                text=text,
-                importance_values=observed_values,
-                source_references=(reference,),
-                required_source_references=(reference,) if RequirementImportance.REQUIRED in observed_values else (),
-                preferred_source_references=(reference,) if RequirementImportance.PREFERRED in observed_values else (),
-            ))
+        for item_text in _inline_requirement_items(context, text) if inline is not None else (text,):
+            category = _category(context, item_text)
+            if category is None:
+                unresolved.append(UnresolvedJobItem(source_reference=reference, original_text=raw_line, reason_code="unknown_section"))
+                continue
+            importance, observed_values = _importance(context, item_text)
+            requirements.append(_make_requirement(category, item_text, importance, reference, raw_line))
+            if len(observed_values) > 1:
+                importance_conflicts.append(JobImportanceConflict(
+                    category=category.value,
+                    text=item_text,
+                    importance_values=observed_values,
+                    source_references=(reference,),
+                    required_source_references=(reference,) if RequirementImportance.REQUIRED in observed_values else (),
+                    preferred_source_references=(reference,) if RequirementImportance.PREFERRED in observed_values else (),
+                ))
 
     requirements, duplicate_conflicts = _merge_exact(requirements)
     responsibilities, _ = _merge_exact(responsibilities)

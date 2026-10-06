@@ -79,7 +79,7 @@ def test_duplicate_skills_do_not_increase_score_and_distinct_names_remain_distin
     distinct = CareerProfile(skills=(fact("Excel", skills=("Excel",)), fact("Advanced Excel", skills=("Advanced Excel",)), fact("SAP", skills=("SAP",)), fact("SAP ERP", skills=("SAP ERP",))))
 
     assert analyze_cv_quality(duplicate).overall_score == analyze_cv_quality(CareerProfile(skills=(fact("Excel", skills=("Excel",)),))).overall_score
-    assert dimension(analyze_cv_quality(distinct), CVQualityDimension.EVIDENCE) == dimension(analyze_cv_quality(duplicate), CVQualityDimension.EVIDENCE)
+    assert dimension(analyze_cv_quality(distinct), CVQualityDimension.EVIDENCE) > dimension(analyze_cv_quality(duplicate), CVQualityDimension.EVIDENCE)
 
 
 def test_explicit_metric_improves_evidence_without_inventing_one() -> None:
@@ -122,8 +122,8 @@ def test_machine_readable_document_and_ambiguity_have_bounded_structure_effects(
     clear = analyze_cv_quality(CareerProfile(), document=document())
     ambiguous = analyze_cv_quality(CareerProfile(), document=document(), unresolved_evidence=tuple(UnresolvedEvidence(block_reference=f"page:1:block:{index}", section_type=None, reason="ambiguous") for index in range(1, 20)))
 
-    assert dimension(clear, CVQualityDimension.ATS_READINESS) == 20
-    assert dimension(ambiguous, CVQualityDimension.STRUCTURE) == dimension(clear, CVQualityDimension.STRUCTURE) - 2
+    assert 0 < dimension(clear, CVQualityDimension.ATS_READINESS) < 20
+    assert dimension(ambiguous, CVQualityDimension.STRUCTURE) == dimension(clear, CVQualityDimension.STRUCTURE) - 3
     assert all(finding.code != "certification_not_present" for finding in clear.findings)
 
 

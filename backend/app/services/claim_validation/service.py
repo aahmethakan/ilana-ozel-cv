@@ -8,10 +8,12 @@ from app.services.claim_validation.schemas import (
     EducationFieldAssertion,
     GeneratedClaimProposal,
     WorkFieldAssertion,
+    WorkFactAssociationAssertion,
 )
 from app.services.generation_context.schemas import (
     EligibleAtomicClaim,
     EligibleContactField,
+    EligibleWorkFactAssociation,
     EligibleStructuredField,
     GenerationContext,
 )
@@ -26,6 +28,19 @@ def validate_generated_claim(generation_context: GenerationContext, claim: Gener
 
     findings: list[ClaimValidationFinding] = []
     for index, assertion in enumerate(claim.assertions):
+        if isinstance(assertion, WorkFactAssociationAssertion):
+            association = generation_context.find_eligible_evidence(assertion.association_evidence_id)
+            atomic = generation_context.find_eligible_evidence(assertion.atomic_evidence_id)
+            work_exists = any((item.record_id, item.candidate_id) == (assertion.work_record_id, assertion.work_candidate_id) for item in generation_context.work_experiences)
+            if association is None or atomic is None:
+                findings.append(_finding(ClaimValidationFindingCode.UNKNOWN_EVIDENCE, index, assertion.association_evidence_id if association is None else assertion.atomic_evidence_id))
+            elif not isinstance(association, EligibleWorkFactAssociation):
+                findings.append(_finding(ClaimValidationFindingCode.EVIDENCE_KIND_MISMATCH, index, assertion.association_evidence_id))
+            elif not isinstance(atomic, EligibleAtomicClaim) or not work_exists:
+                findings.append(_finding(ClaimValidationFindingCode.LINEAGE_MISMATCH, index, assertion.association_evidence_id))
+            elif (association.atomic_evidence_id, association.work_record_id, association.work_candidate_id) != (assertion.atomic_evidence_id, assertion.work_record_id, assertion.work_candidate_id):
+                findings.append(_finding(ClaimValidationFindingCode.LINEAGE_MISMATCH, index, assertion.association_evidence_id))
+            continue
         evidence = generation_context.find_eligible_evidence(assertion.evidence_id)
         if evidence is None:
             findings.append(_finding(ClaimValidationFindingCode.UNKNOWN_EVIDENCE, index, assertion.evidence_id))

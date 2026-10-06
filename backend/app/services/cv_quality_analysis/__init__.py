@@ -5,7 +5,7 @@ from app.services.cv_quality_analysis.schemas import (
     CVQualityResult,
     FindingSeverity,
 )
-from app.services.cv_quality_analysis.service import analyze_cv_quality
+from app.services.cv_quality_analysis.service import analyze_cv_quality, analyze_reviewed_cv_quality
 
 __all__ = [
     "CVQualityContext",
@@ -14,4 +14,5 @@ __all__ = [
     "CVQualityResult",
     "FindingSeverity",
     "analyze_cv_quality",
+    "analyze_reviewed_cv_quality",
 ]

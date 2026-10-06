@@ -36,6 +36,16 @@ def test_explicit_labeled_title_and_company_are_extracted_without_guessing() -> 
     assert result.profile.company == "Example Manufacturing"
 
 
+def test_turkish_inline_requirement_list_preserves_explicit_items_without_classifying_them() -> None:
+    result = analyze("Pozisyon: Systems Analyst\nGereksinimler: SQL, Python")
+
+    assert result.profile.title == "Systems Analyst"
+    assert {(item.text, item.category, item.importance, item.source_references) for item in result.profile.requirements} == {
+        ("Python", RequirementCategory.OTHER, RequirementImportance.REQUIRED, ("job:line:2",)),
+        ("SQL", RequirementCategory.OTHER, RequirementImportance.REQUIRED, ("job:line:2",)),
+    }
+
+
 def test_english_and_turkish_sections_preserve_bullets_and_stable_refs() -> None:
     result = analyze("Requirements\n- SAP\nPreferred Qualifications\n- Excel\nSorumluluklar\n- Installation schedule coordination\nAranan Nitelikler\n- PLC")
 

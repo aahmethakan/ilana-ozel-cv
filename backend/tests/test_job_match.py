@@ -24,7 +24,7 @@ from app.services.job_analysis import UnresolvedJobItem
 from app.services.career_gap_analysis import CoachQuestion, GapCategory, GapPriority
 from app.services.career_gap_analysis.schemas import AnswerType
 from app.services.coach_answer_processing import CoachAnswer, process_coach_answer
-from app.services.job_match import RequirementMatchStatus, match_job_to_profile
+from app.services.job_match import RequirementMatchStatus, RequirementMatchType, match_job_to_profile
 from app.services.job_match import service as match_service
 
 
@@ -102,6 +102,18 @@ def test_tool_and_skill_categories_do_not_cross_match() -> None:
 
     assert match((requirement("SAP", RequirementCategory.TOOL),), CareerProfile(skills=(skill_only,)))[0].status is RequirementMatchStatus.NOT_EVIDENCED
     assert match((requirement("SAP", RequirementCategory.SKILL),), CareerProfile(tools=(tool_only,)))[0].status is RequirementMatchStatus.NOT_EVIDENCED
+
+
+def test_generic_requirement_matches_only_exact_trusted_named_profile_evidence() -> None:
+    generic = requirement("SQL", RequirementCategory.OTHER)
+    exact = match((generic,), CareerProfile(skills=(skill("SQL"),)))[0]
+    inferred = match((generic,), CareerProfile(skills=(skill("SQL", VerificationStatus.INFERRED_UNVERIFIED),)))[0]
+    expanded = match((generic,), CareerProfile(skills=(skill("SQL Server"),)))[0]
+
+    assert exact.status is RequirementMatchStatus.MATCHED
+    assert exact.matched_evidence_references == ("cv:skill:1",)
+    assert inferred.status is RequirementMatchStatus.NOT_EVALUABLE
+    assert expanded.status is RequirementMatchStatus.NOT_EVALUABLE
 
 
 def test_importance_is_preserved_and_aggregated_without_treating_unknown_as_required() -> None:
@@ -263,3 +275,52 @@ def test_results_are_immutable_deterministic_and_have_no_ai_or_score_dependency(
     assert "app.ai" not in source_text
     assert "embedding" not in source_text
     assert "score" not in source_text.casefold()
+
+
+@pytest.mark.parametrize(
+    ("candidate", "job", "expected_status", "expected_type"),
+    [
+        ("Excel", "Excel", RequirementMatchStatus.MATCHED, RequirementMatchType.EXACT),
+        ("excel", "Excel", RequirementMatchStatus.MATCHED, RequirementMatchType.NORMALIZED_EXACT),
+        ("S&OP", "Sales and Operations Planning", RequirementMatchStatus.MATCHED, RequirementMatchType.CONTROLLED_SEMANTIC),
+        ("ERP", "SAP ERP", RequirementMatchStatus.PARTIAL, RequirementMatchType.PARTIAL),
+        ("PLC", "PLC programming", RequirementMatchStatus.NOT_EVIDENCED, RequirementMatchType.UNMATCHED),
+        ("data analysis", "Python", RequirementMatchStatus.NOT_EVIDENCED, RequirementMatchType.UNMATCHED),
+    ],
+)
+def test_conservative_skill_normalization_and_semantic_boundaries(candidate, job, expected_status, expected_type) -> None:
+    result = match((requirement(job),), CareerProfile(skills=(skill(candidate),)))[0]
+
+    assert result.status is expected_status
+    assert result.match_type is expected_type
+    if expected_status is RequirementMatchStatus.MATCHED:
+        assert result.matched_evidence_references == ("cv:skill:1",)
+
+
+def test_tool_technology_boundary_allows_only_controlled_synonyms() -> None:
+    excel = CareerFact(statement="Microsoft Excel", tools=("Microsoft Excel",), verification_status=VerificationStatus.VERIFIED, source=source("cv:tool:excel"))
+    erp = CareerFact(statement="ERP", tools=("ERP",), verification_status=VerificationStatus.VERIFIED, source=source("cv:tool:erp"))
+    plc = CareerFact(statement="PLC programming", tools=("PLC programming",), verification_status=VerificationStatus.VERIFIED, source=source("cv:tool:plc"))
+    results = match((requirement("MS Excel", RequirementCategory.TOOL), requirement("SAP ERP", RequirementCategory.TOOL), requirement("Siemens PLC", RequirementCategory.TOOL)), CareerProfile(tools=(excel, erp, plc)))
+
+    assert [item.status for item in results] == [RequirementMatchStatus.MATCHED, RequirementMatchStatus.NOT_EVIDENCED, RequirementMatchStatus.NOT_EVIDENCED]
+    assert results[0].match_type is RequirementMatchType.CONTROLLED_SEMANTIC
+    assert all(item.matched_evidence_references == () for item in results[1:])
+
+
+def test_controlled_certification_and_language_equivalences_remain_evidence_backed() -> None:
+    profile = CareerProfile(certifications=(Certification(name="PMP", source=source("cv:cert:pmp")),), languages=(LanguageSkill(language="English", proficiency="C1", source=source("cv:language:english")),))
+    results = match((requirement("PMP certification", RequirementCategory.CERTIFICATION), requirement("Advanced English", RequirementCategory.LANGUAGE)), profile)
+
+    assert [item.status for item in results] == [RequirementMatchStatus.MATCHED, RequirementMatchStatus.MATCHED]
+    assert all(item.match_type is RequirementMatchType.CONTROLLED_SEMANTIC for item in results)
+    assert [item.matched_evidence_references for item in results] == [("cv:cert:pmp",), ("cv:language:english",)]
+
+
+def test_inferred_and_job_only_values_never_become_semantic_evidence() -> None:
+    profile = CareerProfile(skills=(skill("SAP", VerificationStatus.INFERRED_UNVERIFIED),))
+    result = match((requirement("SAP"), requirement("Siemens PLC")), profile)
+
+    assert all(item.status is RequirementMatchStatus.NOT_EVIDENCED for item in result)
+    assert all(item.match_type is RequirementMatchType.UNMATCHED for item in result)
+    assert "Siemens" not in profile.model_dump_json()

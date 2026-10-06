@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 from app.domain.job import RequirementImportance
-from app.services.job_match import JobMatchResult, RequirementMatchResult, RequirementMatchStatus
+from app.services.job_match import JobMatchResult, RequirementMatchResult, RequirementMatchStatus, RequirementMatchType
 from app.services.job_match_score.schemas import (
     JobMatchScoreBreakdown,
     JobMatchScoreFinding,
@@ -67,6 +67,15 @@ def _status_units(status: RequirementMatchStatus, policy: JobMatchScoringPolicy)
     return None
 
 
+def _result_units(result: RequirementMatchResult, policy: JobMatchScoringPolicy) -> int | None:
+    units = _status_units(result.status, policy)
+    # Controlled equivalence confirms owned evidence but is intentionally worth less
+    # than a literal requirement match. It never changes candidate evidence.
+    if result.match_type is RequirementMatchType.CONTROLLED_SEMANTIC and units is not None:
+        return min(units, policy.partial_units)
+    return units
+
+
 def _rounded_percent(numerator: int, denominator: int) -> int | None:
     if denominator == 0:
         return None
@@ -77,7 +86,7 @@ def _score(results: tuple[RequirementMatchResult, ...], policy: JobMatchScoringP
     earned = 0
     possible = 0
     for result in results:
-        units = _status_units(result.status, policy)
+        units = _result_units(result, policy)
         if units is None:
             continue
         weight = _weight(result.requirement.importance, policy)
@@ -107,7 +116,7 @@ def calculate_job_match_score(match_result: JobMatchResult) -> JobMatchScoreResu
     unknown = tuple(item for item in results if item.requirement.importance is RequirementImportance.UNKNOWN)
     evaluated = tuple(item for item in results if item.status is not RequirementMatchStatus.NOT_EVALUABLE)
     weighted_earned = sum(
-        _weight(item.requirement.importance, policy) * (_status_units(item.status, policy) or 0)
+        _weight(item.requirement.importance, policy) * (_result_units(item, policy) or 0)
         for item in evaluated
     )
     weighted_possible = sum(

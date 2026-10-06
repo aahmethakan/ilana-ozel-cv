@@ -17,8 +17,8 @@ def _id(prefix: str, payload: dict) -> str:
     return f"{prefix}:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
 
 
-def work_entry_id(record_id: str, candidate_id: str, identity_id: str, date_id: str | None) -> str:
-    return _id("work-entry", {"record_id": record_id, "candidate_id": candidate_id, "identity": identity_id, "date": date_id})
+def work_entry_id(record_id: str, candidate_id: str, identity_id: str, date_id: str | None, fact_ids: tuple[str, ...] = ()) -> str:
+    return _id("work-entry", {"record_id": record_id, "candidate_id": candidate_id, "identity": identity_id, "date": date_id, "facts": fact_ids})
 
 
 def education_entry_id(record_id: str, candidate_id: str, identity_id: str, date_id: str | None) -> str:
@@ -32,6 +32,7 @@ class ComposedWorkEntry(BaseModel):
     candidate_id: str
     identity_claim: RenderedClaim
     date_claim: RenderedClaim | None = None
+    fact_claims: tuple[RenderedClaim, ...] = Field(default_factory=tuple)
 
     @model_validator(mode="after")
     def validate_identity(self):
@@ -40,7 +41,11 @@ class ComposedWorkEntry(BaseModel):
             raise ValueError("Work entry claims must have matching work lineage.")
         if self.date_claim and self.date_claim.rendering_mode.value != "work_date":
             raise ValueError("Work entry date claim must use work_date mode.")
-        expected = work_entry_id(self.record_id, self.candidate_id, self.identity_claim.rendered_claim_id, self.date_claim.rendered_claim_id if self.date_claim else None)
+        if any(claim.rendering_mode.value != "work_fact_exact" or claim.structured_lineage is None or (claim.structured_lineage.record_id, claim.structured_lineage.candidate_id) != (self.record_id, self.candidate_id) for claim in self.fact_claims):
+            raise ValueError("Associated work facts must have matching exact work lineage.")
+        if len({claim.rendered_claim_id for claim in self.fact_claims}) != len(self.fact_claims):
+            raise ValueError("Associated work facts cannot duplicate claims.")
+        expected = work_entry_id(self.record_id, self.candidate_id, self.identity_claim.rendered_claim_id, self.date_claim.rendered_claim_id if self.date_claim else None, tuple(claim.rendered_claim_id for claim in self.fact_claims))
         if self.entry_id != expected:
             raise ValueError("Work entry ID must match canonical content.")
         return self

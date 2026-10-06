@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.domain.career import CareerProfile
 from app.domain.document import SectionType
+from app.confirmation.structured import WorkExperienceCandidate
 
 
 class UnresolvedEvidence(BaseModel):
@@ -21,3 +22,4 @@ class CareerExtractionResult(BaseModel):
 
     profile: CareerProfile
     unresolved_evidence: tuple[UnresolvedEvidence, ...] = ()
+    work_experience_candidates: tuple[WorkExperienceCandidate, ...] = ()

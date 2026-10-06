@@ -15,6 +15,7 @@ class ClaimRenderingMode(StrEnum):
     WORK_DATE = "work_date"
     EDUCATION_IDENTITY = "education_identity"
     EDUCATION_DATE = "education_date"
+    WORK_FACT_EXACT = "work_fact_exact"
 
 
 def rendered_claim_id(

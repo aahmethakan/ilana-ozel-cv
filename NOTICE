@@ -1,0 +1,14 @@
+Ilana Ozel CV
+Copyright (C) 2026 AHA
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, version 3 of the License.
+
+This program is distributed without any warranty; without even the implied
+warranty of merchantability or fitness for a particular purpose. See the GNU
+Affero General Public License in LICENSE for details.
+
+Before production deployment, confirm the copyright holder through the
+ILANA_COPYRIGHT_HOLDER configuration value. The corresponding deployed source
+must be made available through ILANA_SOURCE_CODE_URL.

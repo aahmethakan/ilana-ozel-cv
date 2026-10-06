@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.domain.document.blocks import CVSection, DocumentBlock, DocumentPage
+from app.domain.document.evidence import IdentityEvidence
 from app.domain.document.enums import DocumentFormat
 
 NonEmptyText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -28,6 +29,7 @@ class CVDocument(BaseModel):
     blocks: tuple[DocumentBlock, ...] = Field(default_factory=tuple)
     pages: tuple[DocumentPage, ...] = Field(default_factory=tuple)
     sections: tuple[CVSection, ...] = Field(default_factory=tuple)
+    identity_evidence: tuple[IdentityEvidence, ...] = Field(default_factory=tuple)
     detected_languages: tuple[NonEmptyText, ...] = Field(default_factory=tuple)
 
     @model_validator(mode="after")
@@ -75,5 +77,9 @@ class CVDocument(BaseModel):
                 if reference in section_references:
                     raise ValueError("A canonical block cannot belong to multiple sections.")
                 section_references.add(reference)
+
+        for evidence in self.identity_evidence:
+            if evidence.block_reference not in known_references:
+                raise ValueError("Identity evidence references an unknown canonical block.")
 
         return self

@@ -3,6 +3,7 @@
 from app.domain.document.blocks import CVSection, DocumentBlock, DocumentPage
 from app.domain.document.document import CVDocument, DocumentSource
 from app.domain.document.enums import BlockType, DocumentFormat, SectionType
+from app.domain.document.evidence import IdentityEvidence, IdentityField, ParserConfidence
 from app.domain.document.location import SourceLocation
 
 __all__ = [
@@ -13,6 +14,9 @@ __all__ = [
     "DocumentFormat",
     "DocumentPage",
     "DocumentSource",
+    "IdentityEvidence",
+    "IdentityField",
+    "ParserConfidence",
     "SectionType",
     "SourceLocation",
 ]

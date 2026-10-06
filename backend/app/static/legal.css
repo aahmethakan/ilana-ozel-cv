@@ -1,0 +1,11 @@
+.legal-notice {
+  border-top: 1px solid #dae3ed;
+  color: #596b7d;
+  font-size: .82rem;
+  line-height: 1.45;
+  margin-top: 28px;
+  padding: 16px 2px;
+}
+
+.legal-notice p { margin: 4px 0; }
+.legal-notice a { color: #07598f; }

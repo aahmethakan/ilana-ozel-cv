@@ -5,6 +5,7 @@ from app.domain.career.facts import CareerFact, Metric
 from app.domain.career.dates import CareerDate
 from app.domain.career.profile import (
     CareerProfile,
+    CandidateIdentity,
     Certification,
     ContactInfo,
     ContactValue,
@@ -27,6 +28,7 @@ __all__ = [
     "CareerFact",
     "CareerDate",
     "CareerProfile",
+    "CandidateIdentity",
     "Certification",
     "ContactInfo",
     "ContactValue",

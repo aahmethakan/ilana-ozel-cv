@@ -26,6 +26,18 @@ class AtomicClaimAssertion(BaseModel):
     value: str = Field(min_length=1)
 
 
+class WorkFactAssociationAssertion(BaseModel):
+    """A fact may be rendered under a role only through this exact association."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    assertion_kind: Literal["work_fact_association"] = "work_fact_association"
+    association_evidence_id: str = Field(min_length=1)
+    atomic_evidence_id: str = Field(min_length=1)
+    work_record_id: str = Field(min_length=1)
+    work_candidate_id: str = Field(min_length=1)
+
+
 class WorkFieldAssertion(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -82,7 +94,7 @@ class ContactFieldAssertion(BaseModel):
 
 
 Assertion = Annotated[
-    AtomicClaimAssertion | WorkFieldAssertion | EducationFieldAssertion | ContactFieldAssertion,
+    AtomicClaimAssertion | WorkFactAssociationAssertion | WorkFieldAssertion | EducationFieldAssertion | ContactFieldAssertion,
     Field(discriminator="assertion_kind"),
 ]
 
@@ -135,7 +147,7 @@ class GeneratedClaimProposal(BaseModel):
     def supporting_evidence_ids(self) -> tuple[str, ...]:
         """Derived aggregate only; callers cannot separately authorize evidence."""
 
-        return tuple(sorted({item.evidence_id for item in self.assertions}))
+        return tuple(sorted({item.atomic_evidence_id if isinstance(item, WorkFactAssociationAssertion) else item.evidence_id for item in self.assertions} | {item.association_evidence_id for item in self.assertions if isinstance(item, WorkFactAssociationAssertion)}))
 
 
 class ClaimValidationStatus(StrEnum):

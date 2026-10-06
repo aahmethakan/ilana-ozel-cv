@@ -47,6 +47,15 @@ def test_explicit_tools_preserve_exact_user_wording_without_strengthening() -> N
         assert result.candidate is not None and result.candidate.proposed_statement == expected
 
 
+def test_turkish_sentence_extracts_only_explicit_siemens_model_as_unverified_candidate() -> None:
+    _, _, result = process(GapCategory.TOOL, "Evet, devreye alma sırasında Siemens S7-1200 kullandım.")
+
+    assert result.status is CoachAnswerStatus.CANDIDATE_CREATED
+    assert result.candidate is not None
+    assert result.candidate.proposed_statement == "Siemens S7-1200"
+    assert result.candidate.verification_status is VerificationStatus.INFERRED_UNVERIFIED
+
+
 def test_certification_and_explicit_english_language_create_compatible_candidates() -> None:
     _, _, certification = process(GapCategory.CERTIFICATION, "PMP")
     _, _, language = process(GapCategory.LANGUAGE, "English - B2")

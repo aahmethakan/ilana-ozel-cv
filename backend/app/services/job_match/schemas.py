@@ -13,6 +13,14 @@ class RequirementMatchStatus(StrEnum):
     NOT_EVALUABLE = "not_evaluable"
 
 
+class RequirementMatchType(StrEnum):
+    EXACT = "exact"
+    NORMALIZED_EXACT = "normalized_exact"
+    CONTROLLED_SEMANTIC = "controlled_semantic"
+    PARTIAL = "partial"
+    UNMATCHED = "unmatched"
+
+
 class RequirementMatchResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -21,6 +29,8 @@ class RequirementMatchResult(BaseModel):
     matched_evidence_references: tuple[str, ...] = Field(default_factory=tuple)
     reason_code: str
     explanation: str
+    match_type: RequirementMatchType = RequirementMatchType.UNMATCHED
+    confidence: str = "none"
 
 
 class JobMatchResult(BaseModel):
