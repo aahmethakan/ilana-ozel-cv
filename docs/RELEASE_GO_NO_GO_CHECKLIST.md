@@ -1,6 +1,6 @@
 # Controlled-release go/no-go checklist
 
-Use this checklist for the proposed **v0.1.0-rc.1** release candidate. Check
+Use this checklist for the proposed **v0.1.0-rc.2** release candidate. Check
 each item with recorded operator evidence. A missing required item is a no-go
 for deployment, not permission to weaken the application's safety boundaries.
 

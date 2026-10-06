@@ -2,6 +2,7 @@ import os
 import tempfile
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator
@@ -11,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "Ilana Ozel CV API"
-    app_version: str = "0.1.0-rc.1"
+    app_version: str = "0.1.0-rc.2"
     environment: str = "development"
     debug: bool = False
     copyright_holder: str | None = None
@@ -20,6 +21,9 @@ class Settings(BaseSettings):
     # An explicit ILANA_SESSION_DB_PATH wins.  The default is the OS temp
     # runtime area, never the repository or an uploaded-document directory.
     session_db_path: Path = Path(os.environ.get("ILANA_SESSION_DB_PATH", Path(tempfile.gettempdir()) / "ilana-ozel-cv" / "sessions.sqlite3"))
+    # Durable recovery is the normal production contract. Ephemeral mode is
+    # an explicit deployment choice for platforms without durable local disk.
+    session_persistence_mode: Literal["durable", "ephemeral"] = "durable"
     session_ttl_hours: int = 24
     pdf_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=50 * 1024 * 1024)
     pdf_max_pages: int = Field(default=50, ge=1, le=500)
@@ -60,7 +64,7 @@ class Settings(BaseSettings):
         if self.session_ttl_hours < 1 or self.session_ttl_hours > 168:
             raise ValueError("session TTL must be between 1 and 168 hours")
         if self.environment == "production":
-            if not self.session_db_path.is_absolute():
+            if self.session_persistence_mode == "durable" and not self.session_db_path.is_absolute():
                 raise ValueError("production session database path must be absolute")
             if not self.allowed_hosts or "*" in self.allowed_hosts:
                 raise ValueError("production allowed hosts must be explicit")

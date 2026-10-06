@@ -42,7 +42,7 @@ $env:ILANA_SESSION_DB_PATH = "C:\ProgramData\ilana-ozel-cv\sessions.sqlite3"
 $env:ILANA_ALLOWED_HOSTS = '["cv.example.test"]'
 $env:ILANA_CORS_ALLOWED_ORIGINS = '["https://cv.example.test"]'
 $env:ILANA_COPYRIGHT_HOLDER = "[deployment copyright holder]"
-$env:ILANA_SOURCE_CODE_URL = "https://source.example.test/ilana-ozel-cv/tree/v0.1.0-rc.1"
+$env:ILANA_SOURCE_CODE_URL = "https://source.example.test/ilana-ozel-cv/tree/v0.1.0-rc.2"
 ```
 
 `ILANA_SESSION_DB_PATH` must be an absolute path outside the repository. The
@@ -98,6 +98,65 @@ the HTTP-context fragment: HTTPS redirect, a 12 MiB transport cap, constrained
 forwarded headers, and separate general/upload/rewrite rate limits. Ensure
 proxy access logs do not record request bodies, sensitive headers, or query
 strings.
+
+## Render Free web service (explicit ephemeral sessions)
+
+Render Free is a small, single-instance deployment option only. Its local
+filesystem is ephemeral: a restart, redeploy, or idle spin-down can remove
+local files. Configure it only with the explicit ephemeral session mode; do
+not point `ILANA_SESSION_DB_PATH` at a path expected to survive those events.
+
+Create a Python Web Service from the reviewed release commit, with **Root
+Directory** set to `backend`, **Build Command** set to:
+
+```text
+pip install -r requirements.txt
+```
+
+and **Start Command** set to:
+
+```text
+python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+```
+
+The repository-root `.python-version` pins the tested Python runtime to
+`3.13.15`. If configuring the service in the Render dashboard instead, set
+`PYTHON_VERSION=3.13.15`; do not rely on Render's changing default version.
+
+Set these Render environment variables. The `ILANA_ALLOWED_HOSTS` and
+`ILANA_CORS_ALLOWED_ORIGINS` values are **PENDING** until Render assigns the
+service's HTTPS `onrender.com` hostname; do not deploy the placeholders:
+
+```text
+ILANA_ENVIRONMENT=production
+ILANA_SESSION_PERSISTENCE_MODE=ephemeral
+ILANA_ALLOWED_HOSTS=["your-service.onrender.com"]
+ILANA_CORS_ALLOWED_ORIGINS=["https://your-service.onrender.com"]
+ILANA_COPYRIGHT_HOLDER=AHA
+ILANA_SOURCE_CODE_URL=https://github.com/aahmethakan/ilana-ozel-cv/tree/v0.1.0-rc.2
+ILANA_SESSION_TTL_HOURS=24
+ILANA_PDF_MAX_BYTES=10485760
+ILANA_PDF_MAX_PAGES=50
+ILANA_EXPENSIVE_OPERATION_CONCURRENCY=2
+```
+
+`ILANA_OPENAI_API_KEY` remains optional and must be configured only as a
+Render secret when controlled rewrite is wanted. Basic analysis and
+deterministic generation do not require it.
+
+In ephemeral mode the server never creates or uses the SQLite persistence
+store. Session state is memory-only, so users must be told that a restart,
+redeploy, or inactivity spin-down can require another CV upload. Raw PDFs and
+generated documents remain non-persistent in both modes.
+
+Render terminates public HTTPS before forwarding HTTP to the process. This app
+uses relative URLs and does not generate external redirect URLs, so no
+forwarded-header trust middleware is required. Do not add broad proxy-header
+trust or Nginx to this service. Keep explicit allowed-host and CORS settings.
+
+For conservative deployment, create the service from an explicitly reviewed
+release commit or tag and select manual deploys. Do not enable automatic
+deployment from arbitrary future `master` commits.
 
 ## Persistence, privacy, and operations
 

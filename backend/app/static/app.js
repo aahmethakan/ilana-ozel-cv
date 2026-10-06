@@ -39,6 +39,12 @@ const findingText = {
 };
 
 function status(message, type = "") { el("status").textContent = message; el("status").className = type; }
+function renderSessionPersistenceNotice(mode) {
+  const notice = el("session-persistence-notice");
+  if (mode !== "ephemeral") { notice.hidden = true; notice.textContent = ""; return; }
+  notice.textContent = "Bu analiz geçicidir. Hizmet yeniden başlatılırsa veya bir süre kullanılmazsa CV'nizi yeniden yüklemeniz gerekebilir.";
+  notice.hidden = false;
+}
 async function loadPublicReleaseInfo() {
   try {
     const response = await fetch("/api/v1/about");
@@ -46,6 +52,7 @@ async function loadPublicReleaseInfo() {
     const info = await response.json();
     el("copyright-holder").textContent = info.copyright_holder || "AHA";
     el("release-version").textContent = info.version ? ` · v${info.version}` : "";
+    renderSessionPersistenceNotice(info.session_persistence_mode);
     const sourceLink = el("source-code-link");
     if (info.source_code_url) {
       sourceLink.href = info.source_code_url;

@@ -204,6 +204,7 @@ def test_development_ui_and_static_assets_are_served() -> None:
 
     assert root.status_code == script.status_code == styles.status_code == 200
     assert 'id="source-code-link"' in root.text
+    assert 'id="session-persistence-notice"' in root.text
     assert "/license" in root.text and "/third-party-notices" in root.text
     assert 'fetch("/api/v1/about")' in script.text
     assert "İlana Özel CV" in root.text
@@ -227,6 +228,8 @@ def test_static_ui_javascript_is_syntax_valid_and_matches_the_html_contract() ->
     assert "localStorage" not in script
     assert '"/api/v1/cv/session/recover"' in script
     assert '"/api/v1/cv/session/delete"' in script
+    assert 'renderSessionPersistenceNotice(info.session_persistence_mode)' in script
+    assert "Bu analiz geçicidir." in script
     assert "Oturumu ve Verilerimi Sil" in root
     assert "İlana Özel CV için önce iş ilanı metnini analiz edin." in script
     assert "potential_impact" in script

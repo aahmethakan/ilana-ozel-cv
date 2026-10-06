@@ -15,7 +15,7 @@ def test_production_configuration_requires_private_explicit_contract() -> None:
         allowed_hosts=("cv.example.test",),
         cors_allowed_origins=("https://cv.example.test",),
         copyright_holder="Example Owner",
-        source_code_url="https://source.example.test/ilana-ozel-cv/tree/v0.1.0-rc.1",
+        source_code_url="https://source.example.test/ilana-ozel-cv/tree/v0.1.0-rc.2",
     )
     assert valid.environment == "production"
     for values in (
@@ -33,7 +33,7 @@ def test_production_configuration_requires_private_explicit_contract() -> None:
                 "allowed_hosts": ("cv.example.test",),
                 "cors_allowed_origins": ("https://cv.example.test",),
                 "copyright_holder": "Example Owner",
-                "source_code_url": "https://source.example.test/ilana-ozel-cv/tree/v0.1.0-rc.1",
+                "source_code_url": "https://source.example.test/ilana-ozel-cv/tree/v0.1.0-rc.2",
                 **values,
             })
 

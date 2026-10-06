@@ -93,7 +93,8 @@ class AnalysisSessionStore:
     def __post_init__(self) -> None:
         if self.persistence is None:
             settings = get_settings()
-            self.persistence = SQLiteSessionPersistence(settings.session_db_path, ttl_hours=settings.session_ttl_hours)
+            if settings.session_persistence_mode == "durable":
+                self.persistence = SQLiteSessionPersistence(settings.session_db_path, ttl_hours=settings.session_ttl_hours)
 
     def _snapshot(self, session: AnalysisSession) -> PersistedAnalysisSessionV1:
         return PersistedAnalysisSessionV1(
@@ -111,8 +112,8 @@ class AnalysisSessionStore:
         )
 
     def _persist(self, session_id: str, session: AnalysisSession) -> None:
-        assert self.persistence is not None
-        self.persistence.save(session_id, self._snapshot(session))
+        if self.persistence is not None:
+            self.persistence.save(session_id, self._snapshot(session))
 
     def persist_session(self, session_id: str) -> None:
         """Persist a canonical/user-confirmed route-level mutation."""
@@ -129,8 +130,8 @@ class AnalysisSessionStore:
         sessions.
         """
         with self._lock:
-            assert self.persistence is not None
-            self.persistence.delete(session_id)
+            if self.persistence is not None:
+                self.persistence.delete(session_id)
             self._sessions.pop(session_id, None)
 
     def _restore(self, snapshot: PersistedAnalysisSessionV1) -> AnalysisSession:
@@ -194,7 +195,8 @@ class AnalysisSessionStore:
             session = self._sessions.get(session_id)
             if session is not None:
                 return session
-            assert self.persistence is not None
+            if self.persistence is None:
+                return None
             snapshot = self.persistence.load(session_id)
             if snapshot is None:
                 return None

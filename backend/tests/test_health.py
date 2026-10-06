@@ -30,7 +30,7 @@ def test_application_metadata_comes_from_settings() -> None:
     settings = get_settings()
 
     assert settings.app_name == "Ilana Ozel CV API"
-    assert settings.app_version == "0.1.0-rc.1"
+    assert settings.app_version == "0.1.0-rc.2"
     assert settings.environment == "development"
     assert settings.debug is False
     assert app.title == settings.app_name
@@ -43,9 +43,10 @@ def test_public_release_info_is_safe_and_does_not_claim_an_unconfigured_source()
     assert response.status_code == 200
     assert response.json() == {
         "project_name": "Ilana Ozel CV",
-        "version": "0.1.0-rc.1",
+        "version": "0.1.0-rc.2",
         "copyright_holder": None,
         "source_code_url": None,
+        "session_persistence_mode": "durable",
     }
 
 

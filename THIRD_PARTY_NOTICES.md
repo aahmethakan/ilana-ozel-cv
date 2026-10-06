@@ -1,7 +1,7 @@
 # Third-party notices
 
 This is a verified index of the pinned direct dependencies for
-`Ilana Ozel CV v0.1.0-rc.1`. It is not legal advice and does not replace the
+`Ilana Ozel CV v0.1.0-rc.2`. It is not legal advice and does not replace the
 license texts and notices in the resolved distributions. A deployment or
 redistribution process must preserve the applicable upstream notices for the
 exact wheels and source artifacts it ships.
